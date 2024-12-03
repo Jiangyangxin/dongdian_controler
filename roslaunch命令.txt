@@ -1,0 +1,3 @@
+roslaunch lslidar_driver lslidar_net.launch //激光雷达 需要修改ip
+roslaunch steer_track all_task.launch       //爬壁机器人控制
+roslaunch pylon_camera pylon_camera_node.launch //打开basler相机

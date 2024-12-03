@@ -1,0 +1,11 @@
+float32[3] dr2_tar_th
+float32[3] dr2_now_th
+float32[3] dr2_now_vel
+float32[3] dr2_tar_force
+float32[3] dr2_now_force
+float32[3] dr1_now_pos
+float32[3] dr1_now_vel
+float32[3] dr1_tar_force
+float32[3] dr1_now_force
+float32[3] fan_pre
+float64 sec_f

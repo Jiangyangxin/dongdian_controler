@@ -1,0 +1,22 @@
+<launch>
+  <!--若使用了bag的虚拟时间，use_sim_time可以防止rviz报错-->
+  <param name="use_sim_time" value="false" />
+  <!--调用平板控制指令的launch文件-->
+  <node pkg="steer_track" type="tcp_server_node" name="tcp_server_node" respawn="false" output="screen" ns="robot_1">  
+  </node> 
+  <!--若需要自动重启，设置respawn为true-->
+  <node pkg="steer_track" type="wit_tcp_client_ros.py" name="imu" args="" output="screen" ns="robot_1">
+      <param name="ip"               type = "str"    value="192.168.0.88"/>
+      <param name="port"               type = "int"    value="23"/>
+  </node>
+  <!-- 控制任务和tcp通讯接口任务对应 python 文件 -->
+  <node pkg="steer_track" type="task_node_old.py" name="task_node_old" output="screen" ns="robot_1">
+    <rosparam file="$(find steer_track)/config/params.yaml" command="load"/>
+  </node>
+
+  <node pkg="steer_track" type="task_node.py" name="task_node" output="screen"  ns="robot_1"/>
+  
+</launch>
+
+
+

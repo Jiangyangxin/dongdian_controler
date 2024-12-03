@@ -1,0 +1,23 @@
+<launch>
+   <node pkg="steer_track" type="wit_tcp_client_ros.py" name="imu" args="" output="screen" ns="robot_1" >
+      <param name="ip"               type = "str"    value="192.168.0.88"/>
+      <param name="port"               type = "int"    value="23"/>
+  </node>
+
+
+    <!-- <node pkg="steer_track" type="wit_tcp_client_ros.py" name="imu" args="" output="screen" ns="robot_2">
+      <param name="ip"               type = "str"    value="192.168.0.88"/>
+      <param name="port"               type = "int"    value="23"/>
+  </node>
+
+
+    <node pkg="steer_track" type="wit_tcp_client_ros.py" name="imu" args="" output="screen" ns="robot_3">
+      <param name="ip"               type = "str"    value="192.168.0.88"/>
+      <param name="port"               type = "int"    value="23"/>
+  </node> -->
+
+
+  <!-- <node pkg="steer_track" type="task_node.py" name="task_node" output="screen">
+    <rosparam file="$(find steer_track)/config/params.yaml" command="load"/>
+  </node> -->
+</launch>
