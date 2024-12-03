@@ -60,7 +60,7 @@ namespace apriltag_ros
 {
     //另外加入 posestamp类型的消息
     ros::NodeHandle nh;
-    ros::Publisher pose_target1_publisher= nh.advertise<geometry_msgs::PoseStamped>("/apriltag_tf_pose",10);
+    ros::Publisher pose_target1_publisher= nh.advertise<geometry_msgs::PoseStamped>("apriltag_tf_pose",10);
     geometry_msgs::PoseStamped pose_target1;
 
     
