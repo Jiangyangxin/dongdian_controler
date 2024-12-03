@@ -1,0 +1,23 @@
+# Set up your streams to rtsp here.
+port: "8554"
+streams: # Cannot rename - must leave this as is.
+
+  stream-x:
+    type: cam
+    source: "v4l2src device=/dev/video0 ! videoconvert ! videoscale ! video/x-raw,framerate=15/1,width=1280,height=720"
+    mountpoint: /front
+    bitrate: 500
+
+  stream1:
+    type: topic
+    source: /hikrobot_camera1/image
+    mountpoint: /back1
+    caps: video/x-raw,framerate=10/1,width=640,height=480
+    bitrate: 500
+
+  stream2:
+    type: topic
+    source: /hikrobot_camera2/image
+    mountpoint: /back2
+    caps: video/x-raw,framerate=10/1,width=640,height=480
+    bitrate: 500
