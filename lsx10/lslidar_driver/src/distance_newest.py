@@ -127,7 +127,7 @@ class Lidar_Bladelenth():
             while abs(nowBangle[i] - Bangle[0]) >= angle_incre:
                 i = i + 1
             if nowBangle.size - i >= Bangle.size:  # B1 OK
-                print('B1')
+                # print('B1')
                 Bdis = Bdis * (count - 1) / count
                 Bdis = Bdis + nowBdis[i:i + Bangle.size] / count
                 if nowBangle.size - i > Bangle.size:
@@ -135,7 +135,7 @@ class Lidar_Bladelenth():
                 Bdis = np.concatenate((nowBdis[:i], Bdis))
                 Bangle = nowBangle.copy()
             else:  # B2
-                print('B2')
+                # print('B2')
                 indicies = np.arange(0, nowBangle.size - i, 1)
                 np.multiply.at(Bdis, indicies, (count - 1) / count)
                 np.add.at(Bdis, indicies, nowBdis[i:] / count)
@@ -145,7 +145,7 @@ class Lidar_Bladelenth():
             while abs(nowBangle[0] - Bangle[i]) >= angle_incre:
                 i = i + 1
             if nowBangle.size >= (Bangle.size - i):  # A1  Bangle.size - i + 1是Bangle中，i到末尾的序列的长度
-                print('A1')
+                # print('A1')
                 indicies = np.arange(i, Bangle.size, 1)
                 np.multiply.at(Bdis, indicies, (count - 1) / count)#Bdis从i到末尾都与新获得值 取平均值
                 np.add.at(Bdis, indicies, nowBdis[:Bdis.size - i] / count)
@@ -153,7 +153,7 @@ class Lidar_Bladelenth():
                     Bdis = np.append(Bdis, nowBdis[Bangle.size - i + 1:])
                     Bangle = np.append(Bangle, nowBangle[Bangle.size - i + 1:])
             else:  # A2
-                print('A2')
+                # print('A2')
                 indicies = np.arange(i, i + nowBangle.size,1)
                 np.multiply.at(Bdis, indicies, (count - 1) / count)
                 np.add.at(Bdis, indicies, nowBdis / count)
@@ -224,38 +224,38 @@ class Lidar_Bladelenth():
                 self.update_Bdis(nowBdis, nowBangle,angle_incre)
 
                 Blen=self.getlength(Bdis,angle_incre)
-                print(("/***第%u次迭代,发现了相似物体,正常更新数据***/") % times)
+                # print(("/***第%u次迭代,发现了相似物体,正常更新数据***/") % times)
                 str="similar"
             elif abs(nowBlen-Blen)>tolerance*Blen:
                 if nowBlen>Blen:
-                    print("目前长度")
-                    print(nowBlen)
-                    print("之前长度")
-                    print(Blen)
+                    # print("目前长度")
+                    # print(nowBlen)
+                    # print("之前长度")
+                    # print(Blen)
                     Bdis=nowBdis.copy()
                     Blen=nowBlen
                     Bangle=nowBangle.copy()
                     Bboundary=nowBboundary
                     count=1.
-                    print(("/***第%u次迭代,发现了更大物体,重置最大物体***/") % times)
+                    # print(("/***第%u次迭代,发现了更大物体,重置最大物体***/") % times)
                     str = "bigger"
                 else:#更小物体
-                    print(("/***第%u次迭代,检测到更小物体,长度为%g m***/") %(times,nowBlen))
+                    # print(("/***第%u次迭代,检测到更小物体,长度为%g m***/") %(times,nowBlen))
                     str = "shorter"
             elif abs(Blen-nowBlen)<tolerance*Blen and not self.each_relative_error(Bboundary,nowBboundary):
                 #长度差值在限定范围内，但是边界坐标差值超过限度
                 if Blen>nowBlen:
-                    print(("/***第%u次迭代,发现了长度略短物体,但位置不同***/") % times)
+                    # print(("/***第%u次迭代,发现了长度略短物体,但位置不同***/") % times)
                     str = "slightly shorter"
                 elif nowBlen>Blen:
-                    print(("/***第%u次迭代,发现了长度略长物体,但位置不同,重置最大物体***/") % times)
+                    # print(("/***第%u次迭代,发现了长度略长物体,但位置不同,重置最大物体***/") % times)
                     str = "slightly bigger"
                     Blen=nowBlen
                     Bangle = nowBangle.copy()
                     Bboundary = nowBboundary
                     Bdis=nowBdis.copy()
                     count = 1.
-        print(("本次迭代后最长物体长度约为：%g m") %Blen)
+        # print(("本次迭代后最长物体长度约为：%g m") %Blen)
 
         r,theta=self.object_segmentation(Bdis,Bangle,Blen,angle_incre,5+1)#r,theta分别保存着分割物体的点的角度和距离
 
@@ -299,6 +299,8 @@ class Lidar_Bladelenth():
         self.lidar_info_array.data[2]= -temp_y1     #new_x2 = -old_y1
         self.lidar_info_array.data[3]=  temp_x1     #new_y2 = old_x1
 
+        tmp_output = np.array(self.lidar_info_array.data[0:4])
+        print("本次扫描的上下边界结果为：",np.round(tmp_output,2))
         self.publisher.publish(self.lidar_info_array)  #发送雷达解算出来的消息
         self.lidar_info_array.data.clear()
 
