@@ -10,8 +10,10 @@ SET(CMAKE_BUILD_TYPE "Debug")
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  roslib
   std_msgs
   #serial_steer
+  nav_msgs
   serial
   tf 
   message_generation
@@ -21,6 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_srvs
   image_transport
+  pose_graph
 )
 LINK_DIRECTORIES("/usr/local/lib/")
 LINK_DIRECTORIES(/opt/MVS/lib/64)
@@ -230,6 +233,9 @@ target_link_libraries(imu_node ${catkin_LIBRARIES})
 add_executable(line_node src/motor_line.cpp)
 add_dependencies(line_node steer_track_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
 target_link_libraries(line_node ${catkin_LIBRARIES})
+
+add_executable(slam_pose src/slam_pose_node.cpp)
+target_link_libraries(slam_pose ${catkin_LIBRARIES})
 
 add_executable(opencvtest src/opencvtest.cpp)
 target_link_libraries(opencvtest ${catkin_LIBRARIES})
