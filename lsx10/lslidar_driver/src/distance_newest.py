@@ -288,6 +288,17 @@ class Lidar_Bladelenth():
         self.lidar_info_array.data.append(float(np.mean(nowBdis))) #nowBdis 保存着最大物体扫描出的每个点的距离数据
         self.lidar_info_array.data.append(float(nowBlen)) #当前扫描出的最大物体的曲线长度
         self.lidar_info_array.data.append(float(Wind_blade_lenth)) #当前扫描出的最大物体的直线长度
+
+        #需要对数据进行修改，上述算法的y轴垂直于叶片朝外，x轴竖直向下，需要修改成 y轴竖直向上，x轴垂直于叶片朝内,且 x1y1为上边界，x2y2为下边界
+        temp_x1=self.lidar_info_array.data[0]
+        temp_y1=self.lidar_info_array.data[1]
+        temp_x2=self.lidar_info_array.data[2]
+        temp_y2=self.lidar_info_array.data[3]
+        self.lidar_info_array.data[0]= -temp_y2     #new_x1 = -old_y2
+        self.lidar_info_array.data[1]=  temp_x2     #new_y1 = old_x2
+        self.lidar_info_array.data[2]= -temp_y1     #new_x2 = -old_y1
+        self.lidar_info_array.data[3]=  temp_x1     #new_y2 = old_x1
+
         self.publisher.publish(self.lidar_info_array)  #发送雷达解算出来的消息
         self.lidar_info_array.data.clear()
 

@@ -47,6 +47,9 @@ raw_yaw = 0
 delta_yaw = 0
 vy_i = 0
 
+# 机器人工作区域范围限制,下界与上界
+y_limit = [-3, 3]
+x_limit = [-3, 3]
 
 # 位置和速度信息全局变量
 current_pose = [0.0, 0.0, math.pi/2]
@@ -445,25 +448,33 @@ def CreateTrajectoryFromMotion(per_x=0.2,per_y=0.4,num=1,orien=1):
 def plan_staight_line(st, tar, step, vel_bia, pid_p):
     # st表示当前的位置current_pose[0:2],tar 表示目标位置np.array([motion_msg.x,motion_msg.y]),step表示步长 0.001，为估算值，step越小，按一次走的越长
     global robot_standard_vel
-    if np.linalg.norm(tar - st) != 0:
-        unitVector = (tar - st)/np.linalg.norm(tar - st)#np.linalg.norm为求模长的函数，这一步将坐标差值的矩阵化为单位向量
+
+    temp = st.copy()
+    temp_tar= tar.copy
+    #限制目标位置的y轴上限，目前暂时不限制x轴的上限
+    temp_tar[1] =  saturate(temp_tar[1],y_limit[1],y_limit[0])
+    ########################################
+
+    if np.linalg.norm(temp_tar - temp) != 0:
+        unitVector = (temp_tar - temp)/np.linalg.norm(temp_tar - temp)#np.linalg.norm为求模长的函数，这一步将坐标差值的矩阵化为单位向量
     else:
         unitVector = np.array([0, 0])
-    temp = st.copy()
-    delta_d = getd(temp, tar)#计算两个坐标间的距离
+
+
+    delta_d = getd(temp, temp_tar)#计算两个坐标间的距离
     while delta_d > step:
         temp_pv = np.append(temp,[saturate(delta_d*pid_p + vel_bia, robot_standard_vel, 0)], axis=0).tolist() #saturate为限制最大最小值，temp_pv被转换为列表形式
         #temp_pv为一个向量，即根据设定点和反馈位置，生成了很多子轨迹，如 temp_pv: [0.7870000000000004, 0.8, 0.03]，0.03为速度
         trajectory_vector.append(temp_pv[:])
         temp += step*unitVector
-        delta_d = getd(temp, tar)
+        delta_d = getd(temp, temp_tar)
     if delta_d > step/10:#[***temp****0.001****tp]
         temp_pv = np.append(temp,[saturate(delta_d*pid_p + vel_bia, robot_standard_vel, 0)], axis=0).tolist()
         trajectory_vector.append(temp_pv[:])
-        temp_pv = np.append(tar,[saturate(vel_bia, robot_standard_vel, 0)], axis=0).tolist()
+        temp_pv = np.append(temp_tar,[saturate(vel_bia, robot_standard_vel, 0)], axis=0).tolist()
         trajectory_vector.append(temp_pv[:])
     else:#[*******0.001**temp**tp]
-        temp_pv = np.append(tar, [saturate(vel_bia, robot_standard_vel, 0)], axis=0).tolist()
+        temp_pv = np.append(temp_tar, [saturate(vel_bia, robot_standard_vel, 0)], axis=0).tolist()
         trajectory_vector.append(temp_pv[:])
 
 '''
@@ -794,6 +805,27 @@ yaw_corr_pid_i : {yaw_corr_pid_i}\n""".format(**config))
     return config
 
 
+def LidarCallback(event):
+    global left_boundary,left_dis,left_len,left_Wind_blade_lenth,right_boundary,\
+        right_dis,right_len,right_Wind_blade_lenth,y_limit,x_limit,current_pose
+    #left_boundary=[0,0,0,0] #x1 y1 x2 y2  y轴竖直向上，x轴垂直于叶片朝内,且 x1y1为上边界，x2y2为下边界
+    #注意boundar中的xy是基于激光雷达坐标系的xy
+    #根据激光雷达的测量值计算斜率
+    lidar_distance=3 #两个激光雷达的x轴向的距离
+    y_bias = 0 #激光雷达与相机在y轴上的偏置距离
+
+    k1_lidar= (right_boundary[0]-left_boundary[0]) / lidar_distance #上边界斜率
+    k2_lidar= (right_boundary[3]-left_boundary[3]) / lidar_distance #下边界斜率
+    #为简化计算难度，只考虑机器人工作区域最左边的上下边界获取，右侧边界由斜率推出
+    y_left_limit= [left_boundary[0]+y_bias, left_boundary[3]+y_bias] #左侧激光雷达扫描叶片上下边界 在相机坐标系下的y轴坐标, y_bias为激光雷达与相机在y轴上的偏置距离
+    x_left_lidar= -2 #左侧激光雷达扫描叶片边界 在相机坐标系下的x轴坐标
+  
+    y_limit[1]= y_left_limit[0] + (current_pose[0]-x_left_lidar) * k1_lidar   # y2= y1+k*(x2-x1) ，上界
+    y_limit[0]= y_left_limit[1] + (current_pose[0]-x_left_lidar) * k2_lidar   #下界
+    x_limit = [-3, 3]
+
+    print(y_limit)
+
 '''
 @Description: 工装跟随函数
 @param {*} event
@@ -1074,6 +1106,7 @@ def alltask():
     print("frequency:",frequency)
     pid_control_timer = rospy.Timer(rospy.Duration(1 / frequency), PidControlCallback)
     follow_control_timer = rospy.Timer(rospy.Duration(1), FollowCallback) #1秒执行一次
+    lidar_control_timer = rospy.Timer(rospy.Duration(0.1), LidarCallback) #0.1秒执行一次
     rospy.spin()
 
 if __name__ == '__main__':

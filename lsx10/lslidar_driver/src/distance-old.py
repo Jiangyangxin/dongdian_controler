@@ -406,6 +406,7 @@ def listener():
     rospy.Subscriber("/scan_left", LaserScan, lidar_left.callback, queue_size=1)
     rospy.Subscriber("/scan_right", LaserScan, lidar_right.callback, queue_size=1)
     
+    ##此文件已作废，请使用distan_newest
     
     
     while not rospy.is_shutdown():                
