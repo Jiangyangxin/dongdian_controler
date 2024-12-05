@@ -20,7 +20,7 @@
 #include <Eigen/Core>
 
 //Tcp服务器端口号
-constexpr int SERVER_PORT = 9527;
+int SERVER_PORT = 9527;
 
 //服务器监听套接字
 int listenfd;
@@ -79,14 +79,14 @@ int main(int argc, char** argv)
     //初始化ros节点
     ros::init(argc, argv, "tcp_server_node");
     ros::NodeHandle nh;
-
+    ros::NodeHandle nh_private("~");
     //消息发布器和订阅器建立
     motion_instruction_pub = nh.advertise<steer_track::motion_instruction>("motion_instruction", 1);
     fan_data_sub = nh.subscribe("fan_pwm_info", 10, FanDataCallback); 
     pose_data_sub = nh.subscribe("/vrpn_client_node/steerRobot/pose", 1, PoseDataCallback); 
     lvban_pose_data_sub = nh.subscribe("/vrpn_client_node/lvban/pose", 1, lvbanPoseDataCallback); 
 
-
+    nh_private.param<int>("SERVER_PORT",SERVER_PORT,9527);
     //服务器sockaddr
     struct sockaddr_in servaddr;
     servaddr.sin_family = AF_INET;//IPV4
