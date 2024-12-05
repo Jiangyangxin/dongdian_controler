@@ -8,10 +8,10 @@
  # @FilePath: /dongdian_controler/climbRun.sh
  # Copyright (c) 2021 LXScience&Technology. All rights reserved.
 ### 
-sleep 1
-sudo chmod 777 /dev/ttyWCHUSB3
-sudo chmod 777 /dev/ttyUSB0 
+# sleep 1
+# sudo chmod 777 /dev/ttyWCHUSB3
+# sudo chmod 777 /dev/ttyUSB0 
 DIR=$(cd $(dirname $0);pwd) #获取当前目录
 source /opt/ros/noetic/setup.bash
-source ${DIR}/devel/setup.bash
+source ${DIR}/../devel/setup.bash
 roslaunch steer_track opencontrol.launch

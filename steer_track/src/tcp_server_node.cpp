@@ -87,6 +87,7 @@ int main(int argc, char** argv)
     lvban_pose_data_sub = nh.subscribe("/vrpn_client_node/lvban/pose", 1, lvbanPoseDataCallback); 
 
     nh_private.param<int>("SERVER_PORT",SERVER_PORT,9527);
+    printf("SERVER_PORT: %d \n",SERVER_PORT);
     //服务器sockaddr
     struct sockaddr_in servaddr;
     servaddr.sin_family = AF_INET;//IPV4

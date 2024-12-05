@@ -824,7 +824,7 @@ def LidarCallback(event):
     y_limit[0]= y_left_limit[1] + (current_pose[0]-x_left_lidar) * k2_lidar   #下界
     x_limit = [-3, 3]
 
-    print(y_limit)
+    # print(y_limit)
 
 '''
 @Description: 工装跟随函数
