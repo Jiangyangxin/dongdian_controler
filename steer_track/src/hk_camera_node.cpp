@@ -39,7 +39,7 @@ int main(int argc, char **argv)
     ros::NodeHandle hikrobot_camera;
     ros::NodeHandle nh_private("~");
     string hk_name;
-    int hk_loop_rate =30;
+    const int hk_loop_rate =30;
     // 如果参数服务器中参数"hk_name"存在， 把"hk_name"的值传递给变量hk_name；如果"hk_name"不存在，就传递默认值"hk_camere1"
     nh_private.param<std::string>("hk_name",hk_name,"hk_camere1");
     
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
         camera::Camera MVS_cap(hikrobot_camera,target_ip1,2);//具体看Camera类的构造函数 0为RGB8Packed，1为Mono8，2为BayerRG8
         //********** rosnode init **********/
         image_transport::ImageTransport main_cam_image(hikrobot_camera);
-        image_transport::CameraPublisher image_pub = main_cam_image.advertiseCamera("/hikrobot_camera/image", 1000);
+        image_transport::CameraPublisher image_pub = main_cam_image.advertiseCamera("/hikrobot_camera1/image", 1000);
         sensor_msgs::Image image_msg;
         sensor_msgs::CameraInfo camera_info_msg;
         cv_bridge::CvImagePtr cv_ptr = boost::make_shared<cv_bridge::CvImage>();

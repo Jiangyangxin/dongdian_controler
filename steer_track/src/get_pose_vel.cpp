@@ -43,7 +43,7 @@ GetPoseVel::GetPoseVel(ros::NodeHandle &nh, std::string climbot_name, const floa
     std::string topic_name;
     // topic_name = "/vrpn_client_node/" + climbot_name_ + "/pose";
     // topic_name = "/final_pose";
-    topic_name = "/apriltag_tf_pose";  // only use apriltag
+    topic_name = "/camera_1/apriltag_tf_pose";  // only use apriltag
     // topic_name = "final_pose"; //mix_position
     pose_sub_ = nh_.subscribe(topic_name, 1, &GetPoseVel::PoseCallback, this); //Optitrack位姿订阅器
 

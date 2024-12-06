@@ -709,7 +709,8 @@ namespace camera
         mutex=thread_param._mutex;
         frame=thread_param._frame.clone();
 
-        pthread_mutex_lock(&mutex);
+        // pthread_mutex_lock(&mutex);
+        // std::cout<<"frame_empty:"<<frame_empty<<std::endl;
         if (frame_empty)
         {
             image = cv::Mat();
@@ -720,7 +721,7 @@ namespace camera
             image = frame.clone();
             frame_empty = 1;
         }
-        pthread_mutex_unlock(&mutex);
+        // pthread_mutex_unlock(&mutex);
     }
 
     //^ ********************************** HKWorkThread1 ************************************ //
@@ -782,11 +783,11 @@ namespace camera
 
             
             if (isMono) { //为黑白图像
-            pthread_mutex_lock(&tmp_param._mutex);
+            // pthread_mutex_lock(&tmp_param._mutex);
             tmp_param._frame = cv::Mat(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC1, pDate).clone();
             tmp_param._frame_empty = 0;
             memcpy(param, &tmp_param, sizeof(tmp_param));
-            pthread_mutex_unlock(&tmp_param._mutex);
+            // pthread_mutex_unlock(&tmp_param._mutex);
             double time = ((double)cv::getTickCount() - start) / cv::getTickFrequency();
             // std::cout<<"mono now" <<std::endl;
             }
@@ -801,12 +802,12 @@ namespace camera
             stConvertParam.nDstBufferSize = MAX_IMAGE_DATA_SIZE;        //ch:输出缓存大小 | en:output buffer size
             stConvertParam.enSrcPixelType = stImageInfo.enPixelType;    //ch:输入像素格式 | en:input pixel format                       //! 输入格式 RGB
             MV_CC_ConvertPixelType(tmp_param._handle, &stConvertParam);
-            pthread_mutex_lock(&tmp_param._mutex);
+            // pthread_mutex_lock(&tmp_param._mutex);
             // camera::frame = cv::Mat(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC3, m_pBufForSaveImage).clone(); //tmp.clone();
             tmp_param._frame = cv::Mat(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC3, m_pBufForSaveImage).clone(); //tmp.clone();
             tmp_param._frame_empty = 0;
             memcpy(param, &tmp_param, sizeof(tmp_param));
-            pthread_mutex_unlock(&tmp_param._mutex);
+            // pthread_mutex_unlock(&tmp_param._mutex);
             double time = ((double)cv::getTickCount() - start) / cv::getTickFrequency();
             // std::cout<<"bgr now" <<std::endl;
             }
@@ -816,7 +817,7 @@ namespace camera
             //std::cout << "HK_camera,Time:" << time << "\tFPS:" << 1 / time << std::endl;
             //imshow("HK vision",frame);
             //waitKey(1);
-            memcpy(param, &tmp_param, sizeof(tmp_param));//
+            // memcpy(param, &tmp_param, sizeof(tmp_param));//
         }
         // free(m_pBufForDriver);
         free(m_pBufForSaveImage);

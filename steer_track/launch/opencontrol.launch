@@ -3,7 +3,7 @@
   <param name="use_sim_time" value="false" />
   <!--调用平板控制指令的launch文件-->
   <node pkg="steer_track" type="tcp_server_node" name="tcp_server_node" respawn="false" output="screen" ns="robot_1">  
-        <param name="SERVER_PORT"               type = "int"    value="9528"/>
+        <param name="SERVER_PORT"               type = "int"    value="9527"/>
   </node> 
   <!--若需要自动重启，设置respawn为true-->
   <node pkg="steer_track" type="wit_tcp_client_ros.py" name="imu" args="" output="screen" ns="robot_1">

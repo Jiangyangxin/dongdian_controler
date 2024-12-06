@@ -73,7 +73,7 @@
 
 
   <!--调用激光雷达的launch文件-->
-  <include file="$(find lslidar_driver)/launch/lslidar_net_double.launch" /> 
-  <include file="$(find lslidar_driver)/launch/distance.launch" />
+  <!-- <include file="$(find lslidar_driver)/launch/lslidar_net_double.launch" /> 
+  <include file="$(find lslidar_driver)/launch/distance.launch" /> -->
 
 </launch>

@@ -47,9 +47,9 @@ raw_yaw = 0
 delta_yaw = 0
 vy_i = 0
 
-# 机器人工作区域范围限制,下界与上界
-y_limit = [-3, 3]
-x_limit = [-3, 3]
+# 机器人工作区域范围限制,上界与下界
+y_limit = [3, -3]
+x_limit = [3, -3]
 
 # 位置和速度信息全局变量
 current_pose = [0.0, 0.0, math.pi/2]
@@ -447,12 +447,19 @@ def CreateTrajectoryFromMotion(per_x=0.2,per_y=0.4,num=1,orien=1):
 
 def plan_staight_line(st, tar, step, vel_bia, pid_p):
     # st表示当前的位置current_pose[0:2],tar 表示目标位置np.array([motion_msg.x,motion_msg.y]),step表示步长 0.001，为估算值，step越小，按一次走的越长
-    global robot_standard_vel
-
+    global robot_standard_vel,y_limit
+    temp=[0.0,0.0]
+    temp_tar=[0.0,0.0] 
+    temp_y=0
+    
     temp = st.copy()
-    temp_tar= tar.copy
+    temp_tar= tar.copy()
     #限制目标位置的y轴上限，目前暂时不限制x轴的上限
-    temp_tar[1] =  saturate(temp_tar[1],y_limit[1],y_limit[0])
+    # if open_control!=True:
+        # temp_y=saturate(temp_tar[1],y_limit[0],y_limit[1])
+        # temp_tar[1]=temp_y
+        # print("temp_tar:",temp_tar) 
+        # print("ylimit:",y_limit)  
     ########################################
 
     if np.linalg.norm(temp_tar - temp) != 0:
@@ -463,13 +470,13 @@ def plan_staight_line(st, tar, step, vel_bia, pid_p):
 
     delta_d = getd(temp, temp_tar)#计算两个坐标间的距离
     while delta_d > step:
-        temp_pv = np.append(temp,[saturate(delta_d*pid_p + vel_bia, robot_standard_vel, 0)], axis=0).tolist() #saturate为限制最大最小值，temp_pv被转换为列表形式
+        temp_pv = np.append(temp,[saturate(delta_d*pid_p + vel_bia, robot_standard_vel, 0)], axis=0).tolist() #saturate为限制最大最小值，temp_pv被转换为列表形式       
         #temp_pv为一个向量，即根据设定点和反馈位置，生成了很多子轨迹，如 temp_pv: [0.7870000000000004, 0.8, 0.03]，0.03为速度
         trajectory_vector.append(temp_pv[:])
         temp += step*unitVector
         delta_d = getd(temp, temp_tar)
     if delta_d > step/10:#[***temp****0.001****tp]
-        temp_pv = np.append(temp,[saturate(delta_d*pid_p + vel_bia, robot_standard_vel, 0)], axis=0).tolist()
+        temp_pv = np.append(temp,[saturate(delta_d*pid_p + vel_bia, robot_standard_vel, 0)], axis=0).tolist()  
         trajectory_vector.append(temp_pv[:])
         temp_pv = np.append(temp_tar,[saturate(vel_bia, robot_standard_vel, 0)], axis=0).tolist()
         trajectory_vector.append(temp_pv[:])
@@ -819,12 +826,20 @@ def LidarCallback(event):
     #为简化计算难度，只考虑机器人工作区域最左边的上下边界获取，右侧边界由斜率推出
     y_left_limit= [left_boundary[0]+y_bias, left_boundary[3]+y_bias] #左侧激光雷达扫描叶片上下边界 在相机坐标系下的y轴坐标, y_bias为激光雷达与相机在y轴上的偏置距离
     x_left_lidar= -2 #左侧激光雷达扫描叶片边界 在相机坐标系下的x轴坐标
-  
-    y_limit[1]= y_left_limit[0] + (current_pose[0]-x_left_lidar) * k1_lidar   # y2= y1+k*(x2-x1) ，上界
-    y_limit[0]= y_left_limit[1] + (current_pose[0]-x_left_lidar) * k2_lidar   #下界
-    x_limit = [-3, 3]
+    
+    #debug
+    k1_lidar=-0.5
+    k2_lidar=0
+    y_left_limit[0] = -0.1
+    y_left_limit[1] = -2.0
+    x_left_lidar = 0
+    ############
+    
+    y_limit[0]= y_left_limit[0] + (current_pose[0]-x_left_lidar) * k1_lidar   # y2= y1+k*(x2-x1) ，上界
+    y_limit[1]= y_left_limit[1] + (current_pose[0]-x_left_lidar) * k2_lidar   #下界
+    x_limit = [3, -3]
 
-    # print(y_limit)
+    # print("ylimit:",y_limit)  
 
 '''
 @Description: 工装跟随函数
@@ -943,6 +958,20 @@ def PidControlCallback(event):
         else:#闭环控制，相应能收到定位数据的时的移动指令
             x,y,yaw = current_pose
             if(len(trajectory_vector)!=0):
+               
+                #限制y
+                iii=0
+                while iii<len(trajectory_vector):
+                    temp_y=saturate(trajectory_vector[iii][1],y_limit[0],y_limit[1])
+                    trajectory_vector[iii][1]=temp_y 
+                    iii= iii+1
+                # temp_y=saturate(trajectory_vector[0][1],y_limit[0],y_limit[1])
+                # trajectory_vector[0][1]=temp_y   
+                # temp_y=saturate(trajectory_vector[1][1],y_limit[0],y_limit[1])
+                # trajectory_vector[1][1]=temp_y
+                print("max_y:",y_limit[0]) 
+                print("target_x_y",trajectory_vector[0][0] ,trajectory_vector[0][1]) 
+                ###########
                 tind, toend = calc_target_index()#返回局部最近点
                 trajectory_vector = trajectory_vector[tind:]#pop已经跟踪的点（局部最近点前的点认为已经被跟踪）
                 if toend:
@@ -964,7 +993,7 @@ def PidControlCallback(event):
                     locwheelth = [0.0, 0.0, 0.0]#每个轮子相对于车子主轴（前进方向）的夹角
                     wheelv = [0.0, 0.0, 0.0]#每个轮子的转弯速度
                     # 计算线速度分量
-                    # 计算原生速度
+                    # 计算原生速度                   
                     tar_th = math.atan2(trajectory_vector[1][1]-trajectory_vector[0][1], trajectory_vector[1][0]-trajectory_vector[0][0])
                     orig_vel = trajectory_vector[0][2]*np.array([math.cos(tar_th), math.sin(tar_th)]) #x和y的速度
                     # 计算偏航矫正速度
