@@ -99,7 +99,7 @@ class Task():
                     # self.steer_info.SteerCmdName["dr2_tar_p"] = 1.0 #-pi -- pi
                 elif self.steer_state == 3:
                     countt=countt+1
-                    if countt<300:
+                    if countt<100:
                         self.steer_info[i].SteerCmdName["steer_state"] = 1 #先轮子速度给0，再复位舵角
                         self.steer_info[i].SteerCmdName["dr1_tar_v"] = round(float(0.0),4)
                         self.steer_info[i].SteerCmdName["dr2_tar_p"] = round(self.angle_in_pi(self.steer_angle[i] + self.steer_angle_comp[i]), 4)#保留四位小数
@@ -197,17 +197,17 @@ class Task():
             for i in range(3):
                 self.steer_v[i] = msg.th_vel[i+3]
                 self.steer_angle[i] = msg.th_vel[i]
-                if msg.fan_pre[i]>=3:  #避免输入过小的负压
+                if msg.fan_pre[i]>=7:  #避免输入过小的负压
                     self.fan_input[i] = msg.fan_pre[i]
                 else:
-                    self.fan_input[i] = 3 
+                    self.fan_input[i] = 7 
 
     def FanInputCallback(self, msg):
         for i in range(3):
-            if msg.data[i]>=3:
+            if msg.data[i]>=7:
              self.fan_input[i] = msg.data[i]
             else:
-             self.fan_input[i] = 3  
+             self.fan_input[i] = 7  
                     
 
                 

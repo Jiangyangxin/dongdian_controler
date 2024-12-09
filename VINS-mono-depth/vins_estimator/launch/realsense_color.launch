@@ -1,5 +1,5 @@
 <launch>
-    <param name="use_sim_time" value="true" />
+    <!-- <param name="use_sim_time" value="false" /> -->
     <!--使用了bag的虚拟时间，防止rviz报错-->
 
     <arg name="config_path" default = "$(find feature_tracker)/../config/realsense/realsense_color_config.yaml" />

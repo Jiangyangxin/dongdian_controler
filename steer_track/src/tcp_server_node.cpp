@@ -185,7 +185,13 @@ int main(int argc, char** argv)
             }
   
         }
-
+        if(!ros::ok())
+        {
+            close(confd);//关闭套接字
+            close(listenfd);
+            pthread_cancel(tid);//关闭子线程，不写应该也可以，主线程结束后会退出进程，所以进程里的其他线程都会终止结束
+            break;
+        }
         ros::spinOnce();
 
     }
