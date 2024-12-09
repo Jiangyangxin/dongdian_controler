@@ -520,6 +520,7 @@ int main(int argc, char **argv)
     {
         ROS_INFO("Use fake depth!");
         sub_color = n.subscribe(IMAGE_TOPIC, 2000, color_callback);
+        std::cout<< IMAGE_TOPIC <<std::endl;
     }
     else
     {

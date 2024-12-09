@@ -39,6 +39,7 @@ Eigen::Vector3d gyr_0;
 bool init_feature = 0;
 bool init_imu = 1;
 double last_imu_t = 0;
+std::string tf_prefix="";
 
 void predict(const sensor_msgs::ImuConstPtr &imu_msg)
 {
@@ -335,7 +336,7 @@ void process()
             pubKeyPoses(estimator, header);
             pubCameraPose(estimator, header);
             pubPointCloud(estimator, header);
-            pubTF(estimator, header);
+            pubTF(estimator, header , tf_prefix);
             pubKeyframe(estimator);
             if (relo_msg != NULL)
                 pubRelocalization(estimator);
@@ -355,6 +356,7 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vins_estimator");
     ros::NodeHandle n("~");
+    ros::NodeHandle nh;
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
     readParameters(n);
     estimator.setParameter();
@@ -364,12 +366,13 @@ int main(int argc, char **argv)
     ROS_WARN("waiting for image and imu...");
 
     registerPub(n);
-
+    n.param("tf_prefix", tf_prefix, (std::string)"robot_1"); //获取tf_prefix
+    std::cout<<"tf_prefix:"<<tf_prefix<<std::endl;
     ros::Subscriber sub_imu = n.subscribe(IMU_TOPIC, 2000, imu_callback, ros::TransportHints().tcpNoDelay());
-    ros::Subscriber sub_image = n.subscribe("/feature_tracker/feature", 2000, feature_callback);
-    ros::Subscriber sub_restart = n.subscribe("/feature_tracker/restart", 2000, restart_callback);
+    ros::Subscriber sub_image = nh.subscribe("feature_tracker/feature", 2000, feature_callback); //不要使用私有节点，否则会出大问题
+    ros::Subscriber sub_restart = nh.subscribe("feature_tracker/restart", 2000, restart_callback);
     //topic from pose_graph, notify if there's relocalization
-    ros::Subscriber sub_relo_points = n.subscribe("/pose_graph/match_points", 2000, relocalization_callback);
+    ros::Subscriber sub_relo_points = nh.subscribe("pose_graph/match_points", 2000, relocalization_callback);
 
     std::thread measurement_process{process};
     ros::spin();

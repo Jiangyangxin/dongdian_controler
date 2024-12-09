@@ -18,7 +18,7 @@ float body_last_y=0;
 float vx_body=0;
 float vy_body=0;
 int First_init=0;
-
+std::string tf_prefix="";
 float VIO_MIX_bias[3]={0,0,0};
 
 int main(int argc, char** argv)
@@ -27,7 +27,9 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "apriltag_to_vins_node");
     //创建节点句柄
     ros::NodeHandle nh;
-
+    ros::NodeHandle n("~");
+    n.param("tf_prefix", tf_prefix, (std::string)"robot_1"); //获取tf_prefix
+    std::cout<<"tf_prefix:"<<tf_prefix<<std::endl;
     //创建最终的位姿发布
     ros::Publisher final_pose_publisher= nh.advertise<geometry_msgs::PoseStamped>("final_pose",1);
     // ros::Publisher apriltag1_pose_publisher= nh.advertise<geometry_msgs::PoseStamped>("/apriltag1_pose",1); //已修改apriltag源码，无需此处再发.
@@ -81,9 +83,9 @@ int main(int argc, char** argv)
     geometry_msgs::PoseStamped final_pose;
 
 //需要运行biaoding.py，把结果T的值给输入进来
-    T_A1_C2.header.frame_id = "apriltag";  
+    T_A1_C2.header.frame_id = tf_prefix+"apriltag";  
     T_A1_C2.header.stamp = ros::Time::now();  
-    T_A1_C2.child_frame_id = "camera_apriltag"; 
+    T_A1_C2.child_frame_id = tf_prefix+"camera_apriltag"; 
     // set translation 
     T_A1_C2.transform.translation.x = -0.19438804;  //代表child_frame_id相对于frame_id的偏移量
     T_A1_C2.transform.translation.y = 0.15247693;  
@@ -101,8 +103,8 @@ int main(int argc, char** argv)
     T_A1_C2.transform.rotation.z = q.z();   
 
 //机器人本体的相机与IMU的位姿转换关系，需要在运行 vins之后获取
-    T_C2_body_2.header.frame_id="camera_apriltag"; 
-    T_C2_body_2.child_frame_id="body_apriltag";
+    T_C2_body_2.header.frame_id=tf_prefix+"camera_apriltag"; 
+    T_C2_body_2.child_frame_id=tf_prefix+"body_apriltag";
     T_C2_body_2.header.stamp = ros::Time::now(); 
 
     //kalman_filter
@@ -132,7 +134,7 @@ int main(int argc, char** argv)
         {
             First_init=0;
             //cout<<coordinate_init<<endl;  
-            if(!buffer_c2_vins.canTransform("camera","world",ros::Time(0),NULL)) //等待VIO数据的发布
+            if(!buffer_c2_vins.canTransform(tf_prefix+"camera",tf_prefix+"world",ros::Time(0),NULL)) //等待VIO数据的发布
             {
             cout<<"can not receive VIO's TF!"<<endl;
             coordinate_init=init_NUM;
@@ -140,7 +142,7 @@ int main(int argc, char** argv)
             continue;
             }
 
-            if(!buffer.canTransform("hikrobot_camera","apriltag",ros::Time(0),NULL)) //等待apriltag数据的发布
+            if(!buffer.canTransform("hikrobot_camera",tf_prefix+"apriltag",ros::Time(0),NULL)) //等待apriltag数据的发布
             {
             cout<<"can not receive apriltag's TF!"<<endl;
             coordinate_init=init_NUM;
@@ -148,8 +150,8 @@ int main(int argc, char** argv)
             continue;
             }
 
-            T_C2_Vins = buffer_c2_vins.lookupTransform("camera","world",ros::Time(0));
-            T_C2_body = buffer_c2_body.lookupTransform("camera","body",ros::Time(0));
+            T_C2_Vins = buffer_c2_vins.lookupTransform(tf_prefix+"camera",tf_prefix+"world",ros::Time(0));
+            T_C2_body = buffer_c2_body.lookupTransform(tf_prefix+"camera",tf_prefix+"body",ros::Time(0));
         
             T_A1_C2.header.stamp = ros::Time::now(); 
             T_A1_C2_pub.sendTransform(T_A1_C2);//"apriltag"->"camera_apriltag"
@@ -160,21 +162,21 @@ int main(int argc, char** argv)
 
 
             
-            T_C1_A1 = buffer.lookupTransform("hikrobot_camera","apriltag",ros::Time(0));
+            T_C1_A1 = buffer.lookupTransform("hikrobot_camera",tf_prefix+"apriltag",ros::Time(0));
             T_C1_A1_2.header.frame_id= "hikrobot_camera";
-            T_C1_A1_2.child_frame_id= "apriltag2"; 
+            T_C1_A1_2.child_frame_id= tf_prefix+"apriltag2"; 
             T_C1_A1_2.header.stamp= ros::Time::now(); 
             T_C1_A1_2.transform = T_C1_A1.transform;
             static_T_C1_A1_vins_pub.sendTransform(T_C1_A1_2);
 
-            T_A1_C2_2.header.frame_id= "apriltag2";
-            T_A1_C2_2.child_frame_id= "camera2"; 
+            T_A1_C2_2.header.frame_id=tf_prefix+"apriltag2";
+            T_A1_C2_2.child_frame_id= tf_prefix+"camera2"; 
             T_A1_C2_2.header.stamp= ros::Time::now(); 
             T_A1_C2_2.transform = T_A1_C2.transform;
             static_T_A1_C2_vins_pub.sendTransform(T_A1_C2_2);
 
-            T_C2_Vins_2.header.frame_id= "camera2";
-            T_C2_Vins_2.child_frame_id= "world"; 
+            T_C2_Vins_2.header.frame_id= tf_prefix+"camera2";
+            T_C2_Vins_2.child_frame_id=tf_prefix+"world"; 
             T_C2_Vins_2.header.stamp= ros::Time::now(); 
             T_C2_Vins_2.transform = T_C2_Vins.transform;
             static_T_C2_vins_pub.sendTransform(T_C2_Vins_2);
@@ -248,7 +250,7 @@ int main(int argc, char** argv)
             //     First_init++;//最多到10，避免溢出
             //  }
              
-            T_C2_body = buffer_c2_body.lookupTransform("camera","body",ros::Time(0));
+            T_C2_body = buffer_c2_body.lookupTransform(tf_prefix+"camera",tf_prefix+"body",ros::Time(0));
             T_A1_C2.header.stamp = ros::Time::now(); 
             T_A1_C2_pub.sendTransform(T_A1_C2);//"apriltag"->"camera_apriltag"
             
@@ -257,13 +259,13 @@ int main(int argc, char** argv)
             T_C2_body_pub.sendTransform(T_C2_body_2);//"camera_apriltag"->"body_apriltag"
     //
             geometry_msgs::TransformStamped tfs2;
-            tfs2 = buffer2.lookupTransform("hikrobot_camera","body",ros::Time(0));
+            tfs2 = buffer2.lookupTransform("hikrobot_camera",tf_prefix+"body",ros::Time(0)); //通过VIO获取的机器人坐标 在海康相机坐标系下的坐标数据
 
 
-            if(buffer.canTransform("hikrobot_camera","body_apriltag",ros::Time(0),NULL)) //收到了apriltag信息
+            if(buffer.canTransform("hikrobot_camera",tf_prefix+"body_apriltag",ros::Time(0),NULL)) //收到了apriltag信息
             {
                 geometry_msgs::TransformStamped tfs;
-                tfs = buffer.lookupTransform("hikrobot_camera","body_apriltag",ros::Time(0));
+                tfs = buffer.lookupTransform("hikrobot_camera",tf_prefix+"body_apriltag",ros::Time(0));
 
                 // if(First_init<2)
                 // {   
@@ -335,7 +337,7 @@ int main(int argc, char** argv)
                 
                 //发布融合定位消息
                 T_final.header.frame_id= "hikrobot_camera"; 
-                T_final.child_frame_id= "final_body"; 
+                T_final.child_frame_id= tf_prefix+"final_body"; 
                 T_final.header.stamp= ros::Time::now(); 
                 T_final.transform.translation.x = ka.m_x(0);
                 T_final.transform.translation.y = ka.m_x(2);
@@ -366,7 +368,7 @@ int main(int argc, char** argv)
             else if(!buffer.canTransform("hikrobot_camera","body_apriltag",ros::Time(0),NULL)) //若丢失apriltag信息，发布VIO的位置
             {
                 T_final.header.frame_id= "hikrobot_camera";
-                T_final.child_frame_id= "final_body"; 
+                T_final.child_frame_id= tf_prefix+"final_body"; 
                 T_final.header.stamp= ros::Time::now(); 
                 T_final.transform.translation.x = tfs2.transform.translation.x + VIO_MIX_bias[0]; //加上VIO与融合定位的差值，保证连续性
                 T_final.transform.translation.y = tfs2.transform.translation.y + VIO_MIX_bias[1];
@@ -390,7 +392,7 @@ int main(int argc, char** argv)
             //发布最终的位姿消息
 
             final_pose.header.stamp=ros::Time::now(); 
-            final_pose.header.frame_id= "final_pose"; 
+            final_pose.header.frame_id= tf_prefix+"final_pose"; 
             final_pose.pose.position.x=T_final.transform.translation.x;
             final_pose.pose.position.y=T_final.transform.translation.y;
             final_pose.pose.position.z=T_final.transform.translation.z;

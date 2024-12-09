@@ -1,7 +1,7 @@
 tag_bundles:
   [
       {
-       name: 'apriltag2',
+       name: 'robot1apriltag2',
        layout:
          [
            #tag33.33,size:26.664

@@ -533,6 +533,7 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "pose_graph");
     ros::NodeHandle n("~");
+    ros::NodeHandle nh;
     posegraph.registerPub(n);
 
     // read param

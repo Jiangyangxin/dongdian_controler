@@ -20,7 +20,8 @@
   <include file="$(find vins_estimator)/launch/realsense_color.launch" />
 
   <!--开启融合定位-->
-  <node pkg="steer_track" type="apriltag_to_vins" name="apriltag_to_vins" respawn="true" output="screen" ns="robot_1" /> 
+  <node pkg="steer_track" type="apriltag_to_vins" name="apriltag_to_vins" respawn="true" output="screen" ns="robot_1" >
+      <param name="tf_prefix" value="robot1" /> 
   </node>    
 
 

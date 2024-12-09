@@ -349,7 +349,7 @@ void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
 }
 
 
-void pubTF(const Estimator &estimator, const std_msgs::Header &header)
+void pubTF(const Estimator &estimator, const std_msgs::Header &header , const std::string &tf_perfix)
 {
     if( estimator.solver_flag != Estimator::SolverFlag::NON_LINEAR)
         return;
@@ -370,7 +370,7 @@ void pubTF(const Estimator &estimator, const std_msgs::Header &header)
     q.setY(correct_q.y());
     q.setZ(correct_q.z());
     transform.setRotation(q);
-    br.sendTransform(tf::StampedTransform(transform, header.stamp, "world", "body"));
+    br.sendTransform(tf::StampedTransform(transform, header.stamp, tf_perfix+"world", tf_perfix+"body"));
 
     // camera frame
     transform.setOrigin(tf::Vector3(estimator.tic[0].x(),
@@ -381,7 +381,7 @@ void pubTF(const Estimator &estimator, const std_msgs::Header &header)
     q.setY(Quaterniond(estimator.ric[0]).y());
     q.setZ(Quaterniond(estimator.ric[0]).z());
     transform.setRotation(q);
-    br.sendTransform(tf::StampedTransform(transform, header.stamp, "body", "camera"));
+    br.sendTransform(tf::StampedTransform(transform, header.stamp, tf_perfix+"body", tf_perfix+"camera"));
 
     nav_msgs::Odometry odometry;
     odometry.header = header;

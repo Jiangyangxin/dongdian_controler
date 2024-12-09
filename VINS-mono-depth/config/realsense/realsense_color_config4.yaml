@@ -3,14 +3,14 @@
 #common parameters
 # imu_topic: "/camera/imu"
 # image_topic: "/camera/color/image_raw"
-imu_topic: "/camera/imu"
-image_topic: "/camera/color/image_raw"
+imu_topic: "/wit/imu"
+image_topic: "/hikrobot_camera/rgb"
 depth_topic: "/camera/aligned_depth_to_color/image_raw"
 output_path: "~/output/"
 
 #by gzf
-static_init_flag: 0  # //0:不采用静态初始化；1:采用静态初始化
-real_topic: "/vrpn_client_node/VIO_gzf/pose"
+static_init_flag: 1  # //0:不采用静态初始化；1:采用静态初始化
+real_topic: "/vrpn_client_node/steer_tk/pose"
 real_flag: 1
 fake_depth_flag: 1
 fake_depth: 207.235
@@ -28,10 +28,10 @@ resolution: 0.02
 #camera calibration
 model_type: PINHOLE
 camera_name: camera
-image_width: 640
-image_height: 480
-# image_width: 1280
-# image_height: 1024
+# image_width: 640
+# image_height: 480
+image_width: 1280
+image_height: 1024
   #TODO modify distortion
 
 distortion_parameters:
@@ -98,7 +98,7 @@ g_norm: 9.81       # gravity magnitude
 loop_closure: 1                    # start loop closure
 fast_relocalization: 0             # useful in real-time and large project
 load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
-pose_graph_save_path: "/home/jiang/output/pose_graph/" # save and load path
+pose_graph_save_path: "/home/ddmp/output/pose_graph/" # save and load path
 
 #unsynchronization parameters
 estimate_td: 0.01930904075288344                      # online estimate time offset between camera and imu
