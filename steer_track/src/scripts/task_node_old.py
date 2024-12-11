@@ -96,7 +96,7 @@ imu_time = 0
 steer_state=1
 
 # lidar相关
-left_boundary=[0,0,0,0]
+left_boundary=[0,0,0,0] #x1 y1 x2 y2
 left_dis = 0
 left_len = 0
 left_Wind_blade_lenth= 0
@@ -104,7 +104,7 @@ right_boundary=[0,0,0,0]
 right_dis = 0
 right_len = 0
 right_Wind_blade_lenth= 0
-
+traj_data=Float32MultiArray()#xlimit ylimit k1 k2
 '''
 description: 获取两个角度值的距离（小于pi的），绝对值
 param {*} a1
@@ -814,7 +814,7 @@ yaw_corr_pid_i : {yaw_corr_pid_i}\n""".format(**config))
 
 def LidarCallback(event):
     global left_boundary,left_dis,left_len,left_Wind_blade_lenth,right_boundary,\
-        right_dis,right_len,right_Wind_blade_lenth,y_limit,x_limit,current_pose
+        right_dis,right_len,right_Wind_blade_lenth,y_limit,x_limit,current_pose,traj_data,traj_pub
     #left_boundary=[0,0,0,0] #x1 y1 x2 y2  y轴竖直向上，x轴垂直于叶片朝内,且 x1y1为上边界，x2y2为下边界
     #注意boundar中的xy是基于激光雷达坐标系的xy
     #根据激光雷达的测量值计算斜率
@@ -839,6 +839,14 @@ def LidarCallback(event):
     y_limit[1]= y_left_limit[1] + (current_pose[0]-x_left_lidar) * k2_lidar   #下界
     x_limit = [3, -3]
 
+    ##traj_data[]:  xlimit ylimit k
+    traj_data.data.clear()
+    traj_data.data.extend(x_limit)
+    traj_data.data.extend(y_limit)
+    traj_data.data.append(k1_lidar)
+    traj_data.data.append(k2_lidar)
+    traj_pub.publish(traj_data)
+    # print(traj_data.data)
     # print("ylimit:",y_limit)  
 
 '''
@@ -1082,7 +1090,7 @@ def PidControlCallback(event):
 '''
 def alltask():
     global frequency, robot_standard_vel, robot_standard_w,maxstvel, pid_control_timer, motor_instruction_pub, follow_control_timer, debug_data_pub,\
-        turn_vel, turn_r, pose_pid_p, yaw_corr_pid_p, yaw_corr_pid_i, pose_pid_vel_bia, global_start_time
+        turn_vel, turn_r, pose_pid_p, yaw_corr_pid_p, yaw_corr_pid_i, pose_pid_vel_bia, global_start_time,traj_pub
     # ROS节点初始化
     rospy.init_node('task_node_old', anonymous=True) #anonymous=True，表示后面定义相同的node名字时候，按照序号进行排列
 
@@ -1101,7 +1109,7 @@ def alltask():
     # 跟踪目标位置发布器
     # rosbag record -O test /task_node_debug_data /vrpn_client_node/steerRobot/pose
     debug_data_pub = rospy.Publisher('task_node_debug_data', task_node_debug, queue_size=1)
-
+    traj_pub=rospy.Publisher('traj_data', Float32MultiArray, queue_size=1)
 # #获取全局参数
 # rospy.get_param(’/global_param_name’)
 # #获取目前命名空间的参数

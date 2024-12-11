@@ -6,6 +6,8 @@
 #include "pthread.h"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
+#include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -25,9 +27,13 @@ int SERVER_PORT = 9527;
 //服务器监听套接字
 int listenfd;
 int confd;
+int max_fd;
 //创建子线程
 pthread_t tid;
-
+//服务端select()函数准备  
+fd_set read_fds;
+struct timeval timeout;
+//检测是否正确连接
 int connnected = 0;
 int ps_success =0;
 std::string fan_data_str;
@@ -36,6 +42,7 @@ std::string fan_data_str;
 //运动指令消息发布器
 ros::Publisher motion_instruction_pub;
 ros::Subscriber fan_data_sub;
+ros::Subscriber traj_data_sub;
 ros::Subscriber pose_data_sub;
 ros::Subscriber lvban_pose_data_sub;
 
@@ -65,7 +72,7 @@ void buf_split(std::vector<std::string> &return_data_vec, const std::string &str
  */
 // void FanDataCallback(const std_msgs::StringConstPtr& msg);
 void FanDataCallback(const std_msgs::Float32MultiArrayConstPtr& msg);
-
+void TrajCallback(const std_msgs::Float32MultiArrayConstPtr& msg);
 /*!
 *\brief 消息订阅线程回调函数
 */
@@ -83,6 +90,7 @@ int main(int argc, char** argv)
     //消息发布器和订阅器建立
     motion_instruction_pub = nh.advertise<steer_track::motion_instruction>("motion_instruction", 1);
     fan_data_sub = nh.subscribe("fan_pwm_info", 10, FanDataCallback); 
+    traj_data_sub = nh.subscribe("traj_data", 10, TrajCallback);
     pose_data_sub = nh.subscribe("/vrpn_client_node/steerRobot/pose", 1, PoseDataCallback); 
     lvban_pose_data_sub = nh.subscribe("/vrpn_client_node/lvban/pose", 1, lvbanPoseDataCallback); 
 
@@ -100,6 +108,7 @@ int main(int argc, char** argv)
     struct sockaddr_in client_addr;
     //客户端sockaddr长度
     socklen_t client_addr_len;
+
 
     //创建ROS消息监听子线程
     // pthread_t tid_1;
@@ -145,26 +154,64 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    ROS_INFO("======waiting for client's request======");
+    // 初始化文件描述符集合
+    FD_ZERO(&read_fds);
+    FD_SET(listenfd, &read_fds);
+    // 设置最大文件描述符和超时时间
+    max_fd = listenfd;
+    timeout.tv_sec = 15; // 5秒超时 如果 timeout 为 NULL，则 select 将阻塞，直到有一个文件描述符就绪（即可读、可写或出现异常条件）
+    timeout.tv_usec = 0;
 
+    ROS_INFO("======waiting for client's request======");
+    ros::Rate r(10);
     while(ros::ok()) 
     {
+
+        // 复制文件描述符集合，因为 select 会修改它
+        fd_set read_fds_copy = read_fds;
+        // 调用 select 函数
+        // int ret = select(max_fd + 1, &read_fds_copy, NULL, NULL, &timeout);
+        int ret = select(max_fd + 1, &read_fds_copy, NULL, NULL, NULL);
+        if (ret < 0) { //表示调用失败。此时，errno 被设置为适当的错误码，以指示失败的原因。
+            perror("select");
+            close(listenfd);
+            exit(EXIT_FAILURE);
+        } 
+        else if (ret == 0) { //如果 timeout 为 NULL，则这种情况不会发生（除非发生错误）。
+            printf("Timeout occurred! No data...\n");
+            continue; // 超时，没有数据可读，继续循环  
+        }
+
+
+
+
         if(connnected==0) //未成功连接
         {
-            client_addr_len = sizeof(client_addr);
-            if((confd = accept(listenfd, (struct sockaddr*)&client_addr, &client_addr_len) )== -1) 
-            {   //accept接受任意客户端的连接，并返回一个新的socket：confd，以及客户端的IP地址 client_addr 
-                //新的socket：confd负责与客户端通信，而旧的socket，listenfd依旧用于服务端的监听
-                ROS_ERROR("accept socket erro: %s(errno: %d)", strerror(errno), errno); 
-                continue;//不断地accept，直到成功为止
-                
-            }
+            // 检查监听 socket 是否有新的连接
+            if (FD_ISSET(listenfd, &read_fds_copy)) 
+            {
+                client_addr_len = sizeof(client_addr);
+                if((confd = accept(listenfd, (struct sockaddr*)&client_addr, &client_addr_len) )== -1) //accept默认会阻塞进程
+                {   //accept接受任意客户端的连接，并返回一个新的socket：confd，以及客户端的IP地址 client_addr 
+                    //新的socket：confd负责与客户端通信，而旧的socket，listenfd依旧用于服务端的监听
+                    ROS_ERROR("accept socket erro: %s(errno: %d)", strerror(errno), errno); 
+                    continue;//不断地accept，直到成功为止
+                }
             
-            //显示客户端IP、端口号信息
-            ROS_INFO("client_ip:%s port:%d", 
-                    inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, client_IP, sizeof(client_IP)),
-                    ntohs(client_addr.sin_port));
-            connnected = 1;
+                
+                // 将新的连接添加到文件描述符集合中
+                FD_SET(confd, &read_fds);
+                if (confd > max_fd) {
+                    max_fd = confd; // 更新最大文件描述符
+                }
+
+                
+                //显示客户端IP、端口号信息
+                ROS_INFO("client_ip:%s port:%d", 
+                        inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, client_IP, sizeof(client_IP)),
+                        ntohs(client_addr.sin_port));
+                connnected = 1;
+            }
         }
 
         else if(connnected==1) //已经成功连接
@@ -188,10 +235,12 @@ int main(int argc, char** argv)
         if(!ros::ok())
         {
             close(confd);//关闭套接字
-            close(listenfd);
+            close(listenfd);    // 关闭监听 socket
             pthread_cancel(tid);//关闭子线程，不写应该也可以，主线程结束后会退出进程，所以进程里的其他线程都会终止结束
             break;
         }
+
+        r.sleep();
         ros::spinOnce();
 
     }
@@ -212,10 +261,11 @@ void* InstructionPubCallback(void* arg)
     {
         char buf[1024] = "";         //服务器读取字符串，最大1024个字节
 
-        if(recv(confd, buf, sizeof(buf), 0) <= 0) {
+         if(recv(confd, buf, sizeof(buf), 0) <= 0) 
+         { // 客户端关闭连接或者出错
             if(connnected==1)
             {
-            ROS_INFO("Socket disconnected!");
+                ROS_INFO("Socket disconnected!");
             }
             connnected = 0;
             //break;
@@ -315,7 +365,7 @@ void buf_split(std::vector<std::string> &return_data_vec, const std::string &str
 }
 
 /**
- * @description: "fan_data"话题，风机数据回调函数
+ * @description: "traj_data"话题，轨迹限制区域数据回调函数
  * @param {const} std_msgs
  * @return {*}
  */
@@ -350,6 +400,46 @@ void FanDataCallback(const std_msgs::Float32MultiArrayConstPtr& msg)
     }
     return;
 }
+
+/**
+ * @description: "traj_data"话题，风机数据回调函数
+ * @param {const} std_msgs
+ * @return {*}
+ */
+void TrajCallback(const std_msgs::Float32MultiArrayConstPtr& msg)
+{
+    static int countt=0;
+    countt++;
+    if(connnected == 1)
+    {
+        std::string traj_data_string;
+        char* str;
+        traj_data_string.append("traj");
+        //上位机的格式：sprintf(dbgStr, "fan\t%.3f\t%.3f\t%.3f\r\n", param_sample[0], param_sample[1], param_sample[2]);
+        for (size_t i = 0; i < msg->data.size(); i++) //将轨迹数据合并成一个字符串
+        {
+            traj_data_string.append("\t");
+            sprintf(str,"%.3f",msg->data[i]);
+            //fan_data_string.append(std::to_string(msg->data[i]));
+            traj_data_string.append(str);
+        }
+        traj_data_string.append("\r\n");
+        char* traj_data_char = new char[strlen(traj_data_string.c_str())+1];
+        strcpy(traj_data_char,traj_data_string.c_str());//将string类型转化为C语言中的char*类型
+        if(countt>10)//降低发送频率
+        {
+            // std::cout<<fan_data_char<<std::endl; //debug
+            write(confd, traj_data_char, strlen(traj_data_char));
+            countt=0;
+        }
+
+        delete[] traj_data_char;
+    }
+    return;
+}
+
+
+
 
 /*以下为刘晓顺师兄写的风机反馈程序，现将std_msgs::String改为了std_msgs::Float32MultiArray*/
 // 原本的底层上传的string类型为 "fan\t%.3f\t%.3f\t%.3f\r\n"，因此 msg 这个string中包含了三个风机的数据
