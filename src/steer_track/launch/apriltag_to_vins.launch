@@ -1,0 +1,30 @@
+<launch>
+    <!--使用了bag的虚拟时间，防止rviz报错,正常使用的时候要设置为false-->
+  <param name="use_sim_time" value="false" />
+
+  <!-- balser相机launch -->
+  <arg name="respawn" default="false" />
+  <arg name="debug" default="false" />
+  <arg name="node_name" default="pylon_camera_node" />
+  <arg name="config_file" default="$(find pylon_camera)/config/default.yaml" />
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+  <arg     if="$(arg debug)" name="launch_prefix" value="gdb -ex run --args" />
+  <node name="$(arg node_name)" pkg="pylon_camera" type="pylon_camera_node" output="screen"
+        respawn="$(arg respawn)" launch-prefix="$(arg launch_prefix)">
+      <rosparam command="load" file="$(arg config_file)" />
+  </node>
+
+
+
+  <!--调用vins的launch文件-->
+  <include file="$(find vins_estimator)/launch/realsense_color.launch" />
+
+  <!--开启融合定位-->
+  <node pkg="steer_track" type="apriltag_to_vins" name="apriltag_to_vins" respawn="true" output="screen" ns="robot_1" >
+      <param name="tf_prefix" value="" /> 
+  </node>    
+
+
+
+
+</launch>

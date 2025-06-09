@@ -1,0 +1,58 @@
+1、安装ros，在终端输入，一键安装
+wget http://fishros.com/install -O fishros && . fishros
+
+2、安装 ceres-solver-1.14.0
+cd build
+cmake ..
+make
+sudo make install
+
+3、安装 pylon-5.2.0.13457-x86_64
+进入pylon安装文件夹
+sudo tar -C /opt -xzf pylonSDK*.tar.gz
+sudo ./setup-usb.sh
+
+4、安装 海康威视的包 MVS_STD_V3.0.1_240422
+打开 MVS 安装包所在文件夹，使用“ sudo dpkg -i xxxx.deb ”直接安装MVS客户端
+
+5、安装 eigen库
+cd build
+cmake ..
+make
+sudo make install
+接着，参考链接https://zhuanlan.zhihu.com/p/581281704?utm_id=0     ，完成修改
+
+6、安装 Sophus
+git clone https://github.com/strasdat/Sophus.git Sophus_no_template
+cd Sophus_no_template
+git checkout a621ff 
+sudo mkdir build && cd build
+sudo cmake -D CMAKE_INSTALL_PREFIX=/usr/local/include/sophus_no_template ..
+sudo make install 
+若报错，需要修改安装目录下的Sophus下的so2.cpp文件
+将:unit_complex_.real() = 1.;
+unit_complex_.imag() = 0.;
+修改为：
+unit_complex_.real() = 1.;
+unit_complex_.imag() = 0.;
+
+
+7、安装 Opencv 
+sudo apt install libopencv-dev python3-opencv
+
+8、安装 log4cplus-2.0.8
+cd log4cplus-2.0.8
+./configure --prefix=/usr/local
+sudo make
+sudo make install
+9、安装 apriltag依赖
+cd apriltag
+cd build
+cmake ..
+make
+sudo make install
+
+10、解决 'undefined reference to `libusb_set_option'的问题
+可以删除以下文件
+/opt/MVS/lib/64/libusb-1.0.so.0
+/opt/MVS/lib/32/libusb-1.0.so.0

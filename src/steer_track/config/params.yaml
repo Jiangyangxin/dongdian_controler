@@ -1,0 +1,38 @@
+frequency: 30.0
+target_vel: 0.045
+steer_max_vel: 0.1
+target_w: 0.2
+
+trajectory:
+  turn_vel          : 0.02
+  turn_r            : 0.02
+  pose_pid_p        : 4.5
+  pose_pid_vel_bia  : 0.06
+  yaw_corr_pid_p    : 2
+  yaw_corr_pid_i    : 60
+
+x_pid_coefficient:
+  kp: 1.0
+  ki: 0.0
+  kd: 0.0
+
+y_pid_coefficient:
+  kp: 1.0
+  ki: 0.0
+  kd: 0.0
+
+theta_pid_coefficient:
+  kp: 2.0
+  ki: 0.0
+  kd: 0.0
+
+vx_pid_coefficient:
+  kp: 0.4
+  ki: 0.0
+  kd: 0.0
+
+vy_pid_coefficient:
+  kp: 0.4
+  ki: 0.0
+  kd: 0.0
+

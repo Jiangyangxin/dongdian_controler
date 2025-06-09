@@ -1,0 +1,11 @@
+1、修改 apriltag_ros 包的源码 common_functions.cpp 里对检测标签数量的限制
+
+2、标定机器人本体上的相机，以及IMU和机器人本体相机的联合标定，具体前往 kalibr_workspace 查看
+
+3、联合标定imu与机器人本体上的相机后，进行机器人本体的apriltag1与机器人本体上的相机的联合标定；
+具体做法是：修改apriltag_ros的settings与tags两个文件，并在机器人本体相机的下方放置另一个apriltag2，使机器人本体上的相机能够观察到此apriltag2；
+随后，利用外部相机同时观测到apriltag1与apriltag2，启动 biaoding.py ， 即可输出 机器人本体上的相机与靶标 apriltag1的位姿转移矩阵 T ，
+将结果填入 apriltag_to_vins.cpp中的 Eigen::Matrix3d Rotation_matrix; 中
+
+4、将相机标定结果与IMU的转换关系填入 vins_estimate包的config中，并根据 apriltag2的z轴信息填入 fake_depth
+

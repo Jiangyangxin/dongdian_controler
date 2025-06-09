@@ -1,0 +1,33 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/jiang/dongdian_ros/devel/include/**",
+        "/home/jiang/can_workspace/devel/include/**",
+        "/home/jiang/catkin_ws/install_isolated/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/jiang/dongdian_ros/src/apriltag_ros/apriltag_ros/include/**",
+        "/home/jiang/dongdian_ros/src/VINS-mono-depth/camera_model/include/**",
+        "/home/jiang/can_workspace/src/can_pkg/include/**",
+        "/home/jiang/can_workspace/src/odom_pkg/include/**",
+        "/home/jiang/can_workspace/src/radar_pkg/include/**",
+        "/home/jiang/dongdian_ros/src/steer_track/include/**",
+        "/home/jiang/can_workspace/src/tracer_ros/tracer_base/include/**",
+        "/home/jiang/can_workspace/src/tracer_ros/tracer_gazebo_sim/include/**",
+        "/home/jiang/can_workspace/src/ugv_sdk/include/**",
+        "/home/jiang/dongdian_ros/src/vrpn_client_ros/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

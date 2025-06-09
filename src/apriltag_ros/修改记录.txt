@@ -1,0 +1,3 @@
+  common_functions.cpp
+  393行
+  // 江扬新对此源码进行修改，当且仅当tag的数量大于3时发布tf消息，避免出现apriltag乱飘的情况

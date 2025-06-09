@@ -1,0 +1,17 @@
+string mode
+float32 x
+float32 y
+float32 dx
+float32 dy
+float32 fan_1
+float32 fan_2
+float32 fan_3
+float32 robot_vel
+float32[4] joystick_vel_w
+float32 polish_speed
+float32 per_x
+float32 per_y
+float32 num_track
+float32 orien_track
+float32 motor_linelenth
+float32 motor_speed

@@ -1,0 +1,36 @@
+<launch>
+    <!--使用了bag的虚拟时间，防止rviz报错,正常使用的时候要设置为false-->
+  <param name="use_sim_time" value="true" />
+
+
+  <arg name="launch_prefix" default="" />
+  <!-- configure camera input -->
+  <arg name="camera_name1" default="/hikrobot_camera1" />
+  <arg name="image_topic1" default="image" />
+  <arg name="queue_size1" default="1" />
+  <!-- apriltag_ros continuous detection node -->
+  <node pkg="apriltag_ros" type="apriltag_ros_continuous_node" name="apriltag_ros_continuous_node" clear_params="true" output="screen" launch-prefix="$(arg launch_prefix)" ns="camera_1">
+    <!-- Remap topics from those used in code to those on the ROS network -->
+    <remap from="image_rect" to="$(arg camera_name1)/$(arg image_topic1)" />
+    <remap from="camera_info" to="$(arg camera_name1)/camera_info" />
+
+    <param name="publish_tag_detections_image" type="bool" value="true" /><!-- default: false -->
+    <param name="queue_size" type="int" value="$(arg queue_size1)" />
+
+    <!-- load parameters (incl. tag family, tags, etc.) -->
+    <rosparam command="load" file="$(find apriltag_ros)/config/settings.yaml"/>
+    <rosparam command="load" file="$(find apriltag_ros)/config/tags.yaml"/>
+  </node>
+
+  <!--调用vins的launch文件-->
+  <include file="$(find vins_estimator)/launch/realsense_color.launch" />
+
+  <!--开启融合定位-->
+  <node pkg="steer_track" type="apriltag_to_vins" name="apriltag_to_vins" respawn="true" output="screen" ns="robot_1" >
+      <param name="tf_prefix" value="" /> 
+  </node>    
+
+
+
+
+</launch>

@@ -1,0 +1,11 @@
+<launch>
+  <!-- imu 对应 python 文件 -->
+  <node pkg="lslidar_driver" type="distance_newest.py" name="distance_left" respawn="true" output="screen">
+      <param name="lidar_base"               type = "str"    value="left"/>
+  </node>
+
+  <node pkg="lslidar_driver" type="distance_newest.py" name="distance_right" respawn="true" output="screen">
+      <param name="lidar_base"               type = "str"    value="right"/>
+  </node>
+
+</launch>

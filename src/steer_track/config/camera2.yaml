@@ -1,0 +1,19 @@
+# true 1 和 false 0 
+width: 1440            #图像宽度 1440
+height: 1080           #图像高度 1080
+Offset_x: 0             #X方向偏置
+Offset_y: 0             #Y方向偏置
+
+FrameRateEnable: true   #使能采集帧率控制 
+FrameRate: 20        #帧率
+TriggerMode: 0          #触发模式，0，off为内触发，连续采集
+ExposureTime: 5000     #曝光时间
+
+GammaEnable: true
+Gamma: 1.0              #伽马因子
+
+GainAuto: 1             #自动增益 0:Off 1:Once 2:Continuous 
+
+SaturationEnable: false
+Saturation: 128          #饱和度
+

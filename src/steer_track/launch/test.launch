@@ -1,0 +1,43 @@
+<launch>
+  <arg name="server" default="192.168.1.125"/>
+  <node pkg="vrpn_client_ros" type="vrpn_client_node" name="vrpn_client_node" output="screen">
+    <rosparam subst_value="true">
+      server: $(arg server)
+      port: 3883
+
+      update_frequency: 100.0
+      frame_id: world
+
+      # Use the VRPN server's time, or the client's ROS time.
+      use_server_time: false
+      broadcast_tf: true
+
+      # Must either specify refresh frequency > 0.0, or a list of trackers to create
+      refresh_tracker_frequency: 1.0
+      #trackers:
+      #- FirstTracker
+      #- SecondTracker
+    </rosparam>
+  </node>
+
+  <arg name="port1" default="/dev/main_serial"/>
+  <arg name="port2" default="/dev/debug_serial"/>
+  <arg name="port3" default="/dev/ttyWCHUSB3"/>
+  <arg name="climbot_name" default="steerRobot"/>
+  <node pkg="steer_track" type="pose_vel_pub_node" name="pose_vel_pub_node" args="$(arg climbot_name)" output="screen"/>
+  <node pkg="steer_track" type="serial_node" name="serial_node" args="$(arg port1)" output="screen"/>
+  <node pkg="steer_track" type="task_node.py" name="task_node" output="screen">
+    <rosparam file="$(find steer_track)/config/params.yaml" command="load"/>
+  </node>
+
+  <!-- imu 对应 python 文件 -->
+  <node pkg="steer_track" type="wit_normal_ros.py" name="imu" output="screen">
+      <param name="port"               type = "str"    value="/dev/ttyUSB0"/>
+      <param name="baud"               type = "int"    value="115200"/>
+  </node>
+  <!-- <node pkg="steer_track" type="path_broadcaster_node" name="path_broadcaster_node1" output="screen"/> -->
+
+  <node pkg="steer_track" type="serial_debug_node" name="serial_debug_node" args="$(arg port2)" output="screen"/>
+
+
+</launch>

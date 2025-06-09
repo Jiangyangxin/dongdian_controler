@@ -1,0 +1,61 @@
+<launch>
+  <!--若使用了bag的虚拟时间，use_sim_time可以防止rviz报错-->
+  <param name="use_sim_time" value="false" />
+
+  <!--调用vrpn的launch文件-->
+  <!-- <arg name="server" default="192.168.1.104"/> -->
+  
+  <!-- <arg name="server" default="192.168.3.11"/> 
+  <node pkg="vrpn_client_ros" type="vrpn_client_node" name="vrpn_client_node" output="screen">
+    <rosparam subst_value="true">
+      server: $(arg server)
+      port: 3883
+
+      update_frequency: 100.0
+      frame_id: world
+
+      # Use the VRPN server's time, or the client's ROS time.
+      use_server_time: false
+      broadcast_tf: true
+
+      # Must either specify refresh frequency > 0.0, or a list of trackers to create
+      refresh_tracker_frequency: 1.0
+      #trackers:
+      #- FirstTracker
+      #- SecondTracker
+    </rosparam>
+  </node> -->
+
+  <!--调用平板控制指令的launch文件-->
+  <node pkg="steer_track" type="tcp_server_node" name="tcp_server_node" respawn="false" output="screen"/>   
+  <!--若需要自动重启，设置respawn为true-->
+  <!-- 
+  pkg指出ROS应该运行哪个pkg
+  type是可执行文件的名称
+  name则是可以任意给出的，它覆盖了原文件中ros::init指定的node的名字 -->
+  <rosparam file="$(find steer_track)/config/camera2.yaml" command="load"/>
+  <node pkg="steer_track" type="hk_camera_node" name="hikrobot_camera" respawn="false" output="screen" />
+  <!-- imu 对应 python 文件 -->
+  <node pkg="steer_track" type="wit_tcp_client_ros.py" name="imu" args="" output="screen">
+  </node>
+  <!-- 控制任务和tcp通讯接口任务对应 python 文件 -->
+  <node pkg="steer_track" type="task_node_old.py" name="task_node_old" output="screen">
+    <rosparam file="$(find steer_track)/config/params.yaml" command="load"/>
+  </node>
+  <node pkg="steer_track" type="task_node.py" name="task_node" output="screen" />
+  <!-- balser相机launch -->
+  <arg name="respawn" default="false" />
+  <arg name="debug" default="false" />
+  <arg name="node_name" default="pylon_camera_node" />
+  <arg name="config_file" default="$(find pylon_camera)/config/default.yaml" />
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+  <arg     if="$(arg debug)" name="launch_prefix" value="gdb -ex run --args" />
+  <node name="$(arg node_name)" pkg="pylon_camera" type="pylon_camera_node" output="screen"
+        respawn="$(arg respawn)" launch-prefix="$(arg launch_prefix)">
+      <rosparam command="load" file="$(arg config_file)" />
+  </node>
+
+  <!--调用vins的launch文件-->
+  <!-- <include file="$(find vins_estimator)/launch/realsense_color.launch" /> -->
+</launch>
+

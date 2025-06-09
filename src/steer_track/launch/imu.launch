@@ -1,0 +1,20 @@
+<launch>
+  <!--若需要自动重启，设置respawn为true-->
+  <node pkg="steer_track" type="wit_tcp_client_ros.py" name="imu" args="" output="screen" ns="robot_1">
+      <param name="ip"               type = "str"    value="192.168.0.89"/>
+      <param name="port"               type = "int"    value="23"/>
+  </node>
+
+  <!-- balser相机launch -->
+  <arg name="respawn" default="false" />
+  <arg name="debug" default="false" />
+  <arg name="node_name" default="pylon_camera_node" />
+  <arg name="config_file" default="$(find pylon_camera)/config/default.yaml" />
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+  <arg     if="$(arg debug)" name="launch_prefix" value="gdb -ex run --args" />
+  <node name="$(arg node_name)" pkg="pylon_camera" type="pylon_camera_node" output="screen"
+        respawn="$(arg respawn)" launch-prefix="$(arg launch_prefix)">
+      <rosparam command="load" file="$(arg config_file)" />
+  </node>
+
+</launch>

@@ -1,0 +1,11 @@
+float32[2] path_xy
+float32 path_v
+float32[2] cur_xy
+float32 cur_yaw
+float32[2] out_vel
+float32[2] orig_vel
+float32[2] corr_p_vel
+float32[2] corr_i_vel
+float32[6] tar_th_vel
+float32[3] tar_fan_pre
+float64 sec_f
