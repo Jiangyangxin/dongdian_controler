@@ -4,7 +4,7 @@
 
   <!-- configure camera input -->
   <arg name="camera_name" default="/hikrobot_camera1" />
-  <arg name="image_topic" default="rgb" />
+  <arg name="image_topic" default="image" />
   <arg name="queue_size" default="1" />
 
   <!-- apriltag_ros continuous detection node -->

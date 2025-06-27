@@ -52,15 +52,18 @@
 #include "tf2/LinearMath/Quaternion.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/PointStamped.h"  
+#include <std_msgs/Float32MultiArray.h>
 #include <stdio.h>
 #include <iostream>
 #include <tf/tf.h>
+#include<unordered_map>
 
 namespace apriltag_ros
 {
     //另外加入 posestamp类型的消息
     ros::NodeHandle nh;
     ros::Publisher pose_target1_publisher= nh.advertise<geometry_msgs::PoseStamped>("apriltag_tf_pose",10);
+    ros::Publisher robot_imagexypub = nh.advertise<std_msgs::Float32MultiArray>("robot_imagexy", 10);
     geometry_msgs::PoseStamped pose_target1;
 
     
@@ -268,7 +271,7 @@ AprilTagDetectionArray TagDetector::detectTags (
     apriltag_detections_destroy(detections_);
     detections_ = NULL;
   }
-  detections_ = apriltag_detector_detect(td_, &apriltag_image);
+  detections_ = apriltag_detector_detect(td_, &apriltag_image);//关键函数，捕捉apriltag标签
 
   // If remove_duplicates_ is set to true, then duplicate tags are not allowed.
   // Thus any duplicate tag IDs visible in the scene must include at least 1
@@ -282,6 +285,7 @@ AprilTagDetectionArray TagDetector::detectTags (
   // Compute the estimated translation and rotation individually for each
   // detected tag
   AprilTagDetectionArray tag_detection_array;
+  std::vector<apriltag_detection_t >imagedetectionarray;
   std::vector<std::string > detection_names;
   tag_detection_array.header = image->header;
   std::map<std::string, std::vector<cv::Point3d > > bundleObjectPoints;
@@ -290,8 +294,8 @@ AprilTagDetectionArray TagDetector::detectTags (
   {
     // Get the i-th detected tag
     apriltag_detection_t *detection;
-    zarray_get(detections_, i, &detection);
-
+    zarray_get(detections_, i, &detection);//此时detection已经被赋值了
+    apriltag_detection_t tmpdetection= *(detection);
     // Bootstrap this for loop to find this tag's description amongst
     // the tag bundles. If found, add its points to the bundle's set of
     // object-image corresponding points (tag corners) for cv::solvePnP.
@@ -321,6 +325,7 @@ AprilTagDetectionArray TagDetector::detectTags (
       }
     }
 
+    imagedetectionarray.push_back(tmpdetection);
     // Find this tag's description amongst the standalone tags
     // Print warning when a tag was found that is neither part of a
     // bundle nor standalone (thus it is a tag in the environment
@@ -330,7 +335,7 @@ AprilTagDetectionArray TagDetector::detectTags (
     if (!findStandaloneTagDescription(tagID, standaloneDescription,
                                       !is_part_of_bundle))
     {
-      continue;
+      continue; //如果全都是bundle,没有StandaloneTag的信息,直接返回,不会继续执行了
     }
 
     //=================================================================
@@ -359,7 +364,8 @@ AprilTagDetectionArray TagDetector::detectTags (
     std::vector<cv::Point3d > standaloneTagObjectPoints;
     std::vector<cv::Point2d > standaloneTagImagePoints;
     addObjectPoints(tag_size/2, cv::Matx44d::eye(), standaloneTagObjectPoints);
-    addImagePoints(detection, standaloneTagImagePoints);
+
+    addImagePoints(detection, standaloneTagImagePoints);//此时会把standaloneTagImagePoints图像信息的角点计算出来，并且加入到standaloneTagImagePoints中，应该是为了显示出来
     Eigen::Isometry3d transform = getRelativeTransform(standaloneTagObjectPoints,
                                                      standaloneTagImagePoints,
                                                      fx, fy, cx, cy);
@@ -367,19 +373,21 @@ AprilTagDetectionArray TagDetector::detectTags (
         makeTagPose(transform, image->header);
 
     // Add the detection to the back of the tag detection array
-    AprilTagDetection tag_detection;
+    //此时detection中已经包含了角点信息
+    AprilTagDetection tag_detection;//tag_detection是物理信息，包括了位姿pose，id和size
     tag_detection.pose = tag_pose;
     tag_detection.id.push_back(detection->id);
     tag_detection.size.push_back(tag_size);
     tag_detection_array.detections.push_back(tag_detection);
     detection_names.push_back(standaloneDescription->frame_name());
+
   }
 
   //=================================================================
   // Estimate bundle origin pose for each bundle in which at least one
   // member tag was detected
 
-  for (unsigned int j=0; j<tag_bundle_descriptions_.size(); j++)
+  for (unsigned int j=0; j<tag_bundle_descriptions_.size(); j++)//处理bundle的信息
   {
     // Get bundle name
     std::string bundleName = tag_bundle_descriptions_[j].name();
@@ -419,6 +427,18 @@ AprilTagDetectionArray TagDetector::detectTags (
   if (publish_tf_) {
     if(zarray_size(detections_)>=3)//this if coded by jyx
     {
+      float ROBOT_IMAGEX=0;
+      float ROBOT_IMAGEY=0;
+      // float tmp_image_n=imagedetectionarray.size()>0? imagedetectionarray.size():1;//避免除0
+      std::unordered_map<int,int> image_index_hashmap;//记录每个id对应的imagedetectionarray的序号
+      for(int i=0;i<imagedetectionarray.size();i++)//处理图像的信息
+      {
+        image_index_hashmap[imagedetectionarray[i].id]=i;// detection是apriltag_detection_t的结构体，包括了 id，中心点像素坐标，四个角点的像素坐标，
+        // std::cout<<imagedetectionarray[i].id <<std::endl; 
+        // std::cout<<imagedetectionarray[i].c[0] <<std::endl;
+        // std::cout<<imagedetectionarray[i].c[1] <<std::endl;
+      }
+      //下面是处理bundle的信息
       for (unsigned int i=0; i<tag_detection_array.detections.size(); i++) {
         geometry_msgs::PoseStamped pose;  
         pose.pose = tag_detection_array.detections[i].pose.pose.pose;
@@ -429,9 +449,24 @@ AprilTagDetectionArray TagDetector::detectTags (
                                                   tag_transform.stamp_,
                                                   image->header.frame_id, //这个image是相机的名字 hikcamera
                                                   detection_names[i]));
-                                                  
+        // std::cout<<tag_detection_array.detections[i].id.size()<<std::endl;
         // std::cout<<zarray_size(detections_)<<std::endl;
-
+        int count_image=0;
+        for(int id_i:tag_detection_array.detections[i].id)//bundle里面包括了所有tag的id
+        {
+          if(image_index_hashmap.find(id_i)==image_index_hashmap.end()) continue;//没找到id对应的image
+          int index=image_index_hashmap[id_i];//id 对应的image序号
+          ROBOT_IMAGEX+=imagedetectionarray[index].c[0];
+          ROBOT_IMAGEY+=imagedetectionarray[index].c[1];
+          count_image++;
+          // std::cout<<ch<<std::endl;
+        }
+        ROBOT_IMAGEX=ROBOT_IMAGEX/count_image;
+        ROBOT_IMAGEY=ROBOT_IMAGEY/count_image;
+        std_msgs::Float32MultiArray array_msg;
+        array_msg.data = {ROBOT_IMAGEX,ROBOT_IMAGEY};
+        // 发布消息
+        robot_imagexypub.publish(array_msg);
        //加入PoseStamped消息
         // pose_target1.header.stamp=ros::Time::now(); 
         // pose_target1.header.frame_id= "apriltag_tf_pose";  ///话题名称为 /camera_1/apriltag_tf_pose
@@ -442,6 +477,7 @@ AprilTagDetectionArray TagDetector::detectTags (
     }
 
   }
+  // imagedetectionarray.clear();
 
   return tag_detection_array;
 }

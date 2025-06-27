@@ -1,0 +1,7 @@
+standalone_tags:
+  [
+    # {id: ID, size: SIZE, name: NAME},
+    
+    {id: 0, size: 0.049,name: 'tagfortraj'}
+
+  ]
