@@ -54,6 +54,7 @@ ros::Publisher motion_instruction_pub;
 ros::Subscriber fan_data_sub;
 ros::Subscriber traj_data_sub;
 ros::Subscriber motor_line_sub;
+ros::Subscriber robot_imagexy_sub;
 ros::Subscriber pose_data_sub;
 ros::Subscriber lvban_pose_data_sub;
 ros::Subscriber left_lidar_sub;
@@ -85,6 +86,7 @@ void buf_split(std::vector<std::string> &return_data_vec, const std::string &str
 // void FanDataCallback(const std_msgs::StringConstPtr& msg);
 void FanDataCallback(const std_msgs::Float32MultiArrayConstPtr& msg);
 void MotorlineDataCallback(const std_msgs::Float32MultiArrayConstPtr& msg);
+void RobotimagexyDataCallback(const std_msgs::Float32MultiArrayConstPtr& msg);
 void left_LidarCallback(const std_msgs::Float32MultiArrayConstPtr& msg);
 void right_LidarCallback(const std_msgs::Float32MultiArrayConstPtr& msg);
 void TrajCallback(const std_msgs::Float32MultiArrayConstPtr& msg);
@@ -107,7 +109,7 @@ int main(int argc, char** argv)
     fan_data_sub = nh.subscribe("fan_pwm_info", 1, FanDataCallback); 
     traj_data_sub = nh.subscribe("traj_data", 1, TrajCallback);
     motor_line_sub = nh.subscribe("motor_line_data", 1, MotorlineDataCallback);
-
+    robot_imagexy_sub = nh.subscribe("robot_imagexy", 1, RobotimagexyDataCallback);
     // pose_data_sub = nh.subscribe("/vrpn_client_node/steerRobot/pose", 1, PoseDataCallback); 
     // lvban_pose_data_sub = nh.subscribe("/vrpn_client_node/lvban/pose", 1, lvbanPoseDataCallback); 
 
@@ -451,6 +453,37 @@ void FanDataCallback(const std_msgs::Float32MultiArrayConstPtr& msg)
 
     // std::cout<<"33333"<<std::endl;
     return;
+}
+
+
+void RobotimagexyDataCallback(const std_msgs::Float32MultiArrayConstPtr& msg)
+{
+    static int countt=0;
+    countt++;
+    if(connnected == 1)
+    {
+        std::string data_string;
+        char* str;
+        data_string.append("robotimagexy");
+        //上位机的格式：sprintf(dbgStr, "robotimagexy\t%.3f\r\n", param_sample[0], param_sample[1], param_sample[2]);
+        for (size_t i = 0; i < msg->data.size();i++) //将电机数据合并成一个字符串
+        {
+            data_string.append("\t");
+            sprintf(str,"%.3f",msg->data[i]);
+            data_string.append(str);
+        }
+        data_string.append("\r\n");
+        char* data_char = new char[strlen(data_string.c_str())+1];
+        strcpy(data_char,data_string.c_str());//将string类型转化为C语言中的char*类型
+        if(countt>10)//降低发送频率
+        {
+            // std::cout<<data_char<<std::endl; //debug
+            write(confd, data_char, strlen(data_char));
+            countt=0;
+        }
+        delete[] data_char;
+    }
+    return; 
 }
 
 
