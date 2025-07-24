@@ -1,4 +1,5 @@
 <launch>
+  <include file="$(find rplidar_ros)/launch/doublelidar.launch" />
 
   <node pkg="steer_track" type="pointcloud_segmentation" name="pointcloud_segmentation_left" args="" output="screen" >
       <param name="lidar_base"               type = "str"    value="left"/>

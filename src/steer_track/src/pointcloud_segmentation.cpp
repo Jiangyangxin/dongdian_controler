@@ -344,10 +344,11 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "laser_clustering");
     ros::NodeHandle nh;
-
+    ros::NodeHandle nh_private("~");
     // 订阅Lasercan话题
     std::string lidar_base;
-    nh.param<std::string>("lidar_base",lidar_base,"left");
+    nh_private.param<std::string>("lidar_base",lidar_base,"left");
+    ROS_INFO("lidar_base: %s",lidar_base.c_str());
     if(lidar_base=="left"){
         ros::Subscriber scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/LeftLidar/scan", 1, scanCallback);
         lidar_info_pub = nh.advertise<std_msgs::Float32MultiArray>("/lidar_info_left", 10);
