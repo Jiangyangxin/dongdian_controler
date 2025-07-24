@@ -109,7 +109,7 @@ int main(int argc, char** argv)
     fan_data_sub = nh.subscribe("fan_pwm_info", 1, FanDataCallback); 
     traj_data_sub = nh.subscribe("traj_data", 1, TrajCallback);
     motor_line_sub = nh.subscribe("motor_line_data", 1, MotorlineDataCallback);
-    robot_imagexy_sub = nh.subscribe("robot_imagexy", 1, RobotimagexyDataCallback);
+    robot_imagexy_sub = nh.subscribe("/robot_imagexy", 1, RobotimagexyDataCallback);
     // pose_data_sub = nh.subscribe("/vrpn_client_node/steerRobot/pose", 1, PoseDataCallback); 
     // lvban_pose_data_sub = nh.subscribe("/vrpn_client_node/lvban/pose", 1, lvbanPoseDataCallback); 
 
