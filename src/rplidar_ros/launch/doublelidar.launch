@@ -1,0 +1,25 @@
+<launch>
+  <node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode" output="screen" ns="LeftLidar">
+  <param name="channel_type"        type="string" value="udp"/>  
+  <param name="udp_ip"              type="string" value="192.168.1.34"/>  
+  <param name="frame_id"            type="string" value="laser"/>
+  <param name="inverted"            type="bool"   value="false"/>
+  <param name="angle_compensate"    type="bool"   value="true"/>
+  <param name="scan_mode"           type="string" value="Sensitivity"/>
+  <param name="scan_frequency"      type="int"    value="10"/>
+  <param name="shielding_angle_min"      type="int"    value="-140"/>
+  <param name="shielding_angle_max"      type="int"    value="140"/>
+  </node>
+
+  <node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode" output="screen" ns="RightLidar">
+  <param name="channel_type"        type="string" value="udp"/>  
+  <param name="udp_ip"              type="string" value="192.168.1.35"/>  
+  <param name="frame_id"            type="string" value="laser"/>
+  <param name="inverted"            type="bool"   value="false"/>
+  <param name="angle_compensate"    type="bool"   value="true"/>
+  <param name="scan_mode"           type="string" value="Sensitivity"/>
+  <param name="scan_frequency"      type="int"    value="10"/>
+  <param name="shielding_angle_min"      type="int"    value="-140"/>
+  <param name="shielding_angle_max"      type="int"    value="140"/>
+  </node>
+</launch>
