@@ -359,8 +359,8 @@ int main(int argc, char** argv) {
         lidar_info_pub = nh.advertise<std_msgs::Float32MultiArray>("/lidar_info_right", 10);
     }
     // 发布原始点云和最大聚类
-    // pc_pub_ = nh.advertise<sensor_msgs::PointCloud2>("point_cloud", 1);
-    largest_obj_pub_ = nh.advertise<sensor_msgs::PointCloud2>("largest_cluster", 1);
+    // pc_pub_ = nh.advertise<sensor_msgs::PointCloud2>("point_cloud", 1); //原始点云
+    // largest_obj_pub_ = nh.advertise<sensor_msgs::PointCloud2>("largest_cluster", 1);//最大物体的点云
     
     ros::spin();
     return 0;

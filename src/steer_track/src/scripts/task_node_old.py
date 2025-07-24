@@ -879,7 +879,7 @@ def LidarCallback(event):
     # x_limit = [3, -3]
     y_limit[0]= (left_boundary[1]) -y_safty -y_bias
     y_limit[1]= (left_boundary[3]) +0.65 -y_bias
-    x_limit = [3, -3]
+
     ############ 
     #若收到的雷达信息超时，取消ylimit
     #lidar_cnt在回调函数会置0

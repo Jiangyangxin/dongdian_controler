@@ -257,7 +257,8 @@ target_link_libraries(hk_camera_node
 
 add_executable(pointcloud_segmentation src/pointcloud_segmentation.cpp)
 target_link_libraries(pointcloud_segmentation ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
+add_executable(gongzhuang_pos src/gongzhuang_pos.cpp)
+target_link_libraries(gongzhuang_pos ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 #############
 ## Install ##
 #############
