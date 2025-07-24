@@ -10,6 +10,7 @@
 #include <pcl/common/geometry.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
+#include <pcl/common/distances.h>
 #include <iostream>
 #include <cmath>
 #include <sensor_msgs/PointCloud2.h>
@@ -17,7 +18,8 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/radius_outlier_removal.h>
 #include <laser_geometry/laser_geometry.h>
-
+#include <string>
+#include <std_msgs/Float32MultiArray.h>
 
 
 //111111111111111111111111111111111111
@@ -174,6 +176,7 @@
 laser_geometry::LaserProjection projector_;
 ros::Publisher pc_pub_;
 ros::Publisher largest_obj_pub_;
+ros::Publisher lidar_info_pub;
 // 计算点云的平均距离
 double calculateAverageDistance(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
     if (cloud->points.empty()) return 0.0;
@@ -341,9 +344,9 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "laser_clustering");
     ros::NodeHandle nh;
-    ros::Publisher lidar_info_pub;
+
     // 订阅Lasercan话题
-    string lidar_base;
+    std::string lidar_base;
     nh.param<std::string>("lidar_base",lidar_base,"left");
     if(lidar_base=="left"){
         ros::Subscriber scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/LeftLidar/scan", 1, scanCallback);
