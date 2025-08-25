@@ -13,6 +13,7 @@
 #include <pcl/common/distances.h>
 #include <iostream>
 #include <cmath>
+#include<algorithm>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/extract_indices.h>
@@ -21,6 +22,262 @@
 #include <string>
 #include <std_msgs/Float32MultiArray.h>
 
+
+//222222222222222222222222222222222
+
+laser_geometry::LaserProjection projector_;
+ros::Publisher pc_pub_;
+ros::Publisher largest_obj_pub_;
+ros::Publisher lidar_info_pub;
+double length_send=0;//记录叶片的发送长度
+bool init=false;//是否初始化完成
+// 计算点云的平均距离
+double calculateAverageDistance(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
+    if (cloud->points.empty()) return 0.0;
+    
+    double total_distance = 0.0;
+    const pcl::PointXYZ origin(0, 0, 0);  // 传感器原点
+    
+    for (const auto& point : cloud->points) {
+        total_distance += pcl::euclideanDistance(point, origin);
+    }
+    
+    return total_distance / cloud->points.size();
+}
+
+// 计算点的角度（相对于x轴）
+double calculateAngle(const pcl::PointXYZ& point)
+{
+    return std::atan2(point.y, point.x);
+}
+double calculateCloudLength(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
+    if (cloud->points.empty()) return 0.0;
+    
+    // 方法1：简单计算边界框尺寸
+    pcl::PointXYZ min_pt, max_pt;
+    pcl::getMinMax3D(*cloud, min_pt, max_pt);
+    
+    // 计算三个维度的长度
+    double x_len = max_pt.x - min_pt.x;
+    // double y_len = max_pt.y - min_pt.y;
+    // double z_len = max_pt.z - min_pt.z;
+    
+    // 返回最大的长度（如果是2D激光数据，z_len可能很小）
+    // return std::max({x_len, y_len, z_len});
+    return x_len;
+    
+    /*
+    // 方法2：使用PCA计算主成分长度（更精确但计算量更大）
+    pcl::PCA<pcl::PointXYZ> pca;
+    pca.setInputCloud(cloud);
+    Eigen::Vector3f eigenvalues = pca.getEigenValues();
+    return sqrt(eigenvalues[0]); // 返回最大特征值的平方根
+    */
+}
+
+std::vector<pcl::PointIndices> euclideanCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
+    // 创建KD树对象用于搜索
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+    tree->setInputCloud(cloud);
+    
+    std::vector<pcl::PointIndices> cluster_indices;
+    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+    
+    // 设置聚类参数
+    ec.setClusterTolerance(0.1);  // 1m
+    ec.setMinClusterSize(10);     // 最小点数
+    ec.setMaxClusterSize(25000);  // 最大点数
+    ec.setSearchMethod(tree);
+    ec.setInputCloud(cloud);
+    ec.extract(cluster_indices);
+    
+    return cluster_indices;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr findLargestCluster(
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, 
+    std::vector<pcl::PointIndices> cluster_indices) {
+    
+    pcl::PointCloud<pcl::PointXYZ>::Ptr largest_cluster(new pcl::PointCloud<pcl::PointXYZ>);
+    size_t max_size = 0;
+    int max_index = -1;
+    
+    // 找到点数最多的聚类
+    for (size_t i = 0; i < cluster_indices.size(); ++i) {
+        if (cluster_indices[i].indices.size() > max_size) {
+            max_size = cluster_indices[i].indices.size();
+            max_index = i;
+        }
+    }
+    
+    // 提取最大聚类
+    if (max_index >= 0) {
+        pcl::ExtractIndices<pcl::PointXYZ> extract;
+        pcl::PointIndices::Ptr indices_ptr(new pcl::PointIndices(cluster_indices[max_index]));
+        extract.setInputCloud(cloud);
+        extract.setIndices(indices_ptr);
+        extract.setNegative(false);
+        extract.filter(*largest_cluster);
+    }
+    
+    return largest_cluster;
+}
+
+bool check_points(pcl::PointXYZ &start_point,pcl::PointXYZ &start_point_pub,pcl::PointXYZ &end_point,pcl::PointXYZ &end_point_pub)
+{
+    double start_point_bias=abs(start_point_pub.x-start_point.x);
+    double end_point_bias=abs(end_point_pub.x-end_point.x);
+    //判断点云的上下边界是否发生改变
+    if(start_point_bias < abs(start_point_pub.x)/10 && end_point_bias<abs(end_point_pub.x)/10)
+    {
+        return false;
+    }
+    return true;
+}
+
+void publish_lidarinfo(pcl::PointXYZ &start_point,pcl::PointXYZ &end_point,double &avg_distance_now,double &length_now)
+{
+    std_msgs::Float32MultiArray array_msg;
+    static pcl::PointXYZ start_point_pub, end_point_pub;
+    double K_bias=0.05;
+    double length_bias= abs(length_send-length_now);
+    if(init==false && length_now>0)
+    {
+        length_send=length_now;
+        start_point_pub=start_point;
+        end_point_pub=end_point;
+        init=true;
+    }
+    bool range_is_change = check_points(start_point,start_point_pub,end_point,end_point_pub);//判断点云的上下边界是否发生改变
+    if(init ==true)
+    {
+        if(length_bias<=K_bias*length_send && range_is_change==false)//如果长度差值和边界坐标的差值在限定范围内
+        {
+            //不做任何处理,保持值的稳定
+        }
+        else if(length_bias<=K_bias*length_send && range_is_change==true)//长度差值在限定范围内，但是边界坐标差值超过限度
+        {
+            //此时可能是工装升降杆移动了
+            length_send=length_now;
+            start_point_pub=start_point;
+            end_point_pub=end_point;
+        }
+        else if(length_bias>K_bias*length_send && range_is_change==false)//如果长度差值过大，但边界坐标的差值在限定范围内
+        {
+            //此时可能是机器人进入了雷达视野
+            length_send=std::max(length_send,length_now);
+            start_point_pub=start_point;
+            end_point_pub=end_point;
+        }
+        else if(length_bias>K_bias*length_send && range_is_change==true)//如果长度差值过大，且边界坐标差值超过限度
+        {
+            //agv移动了，需要更新值
+            length_send=length_now;
+            start_point_pub=start_point;
+            end_point_pub=end_point;
+        }
+    }
+
+    // ROS_INFO("Largest object length: %.2f meters", length_now);
+    array_msg.data.clear();
+    array_msg.data.push_back(start_point_pub.x);//x1
+    array_msg.data.push_back(start_point_pub.y);//y1
+    array_msg.data.push_back(end_point_pub.x);//x2
+    array_msg.data.push_back(end_point_pub.y);//y2
+    array_msg.data.push_back(avg_distance_now);//nowBdis 保存着最大物体扫描出的每个点的距离数据
+    array_msg.data.push_back(length_send);//当前扫描出的最大物体的曲线长度
+    array_msg.data.push_back(abs(start_point.x-end_point.x));//当前扫描出的最大物体的直线长度
+    lidar_info_pub.publish(array_msg);
+    // 输出首尾两端点坐标
+    // std::cout << "Start point (x, y): (" << start_point.x << ", " << start_point.y << ")" << std::endl;
+    // std::cout << "End point (x, y): (" << end_point.x << ", " << end_point.y << ")" << std::endl;
+}
+
+
+void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
+    // 将LaserScan转换为PointCloud2
+    sensor_msgs::PointCloud2 cloud;
+    projector_.projectLaser(*scan, cloud);
+    
+    // 转换为PCL点云格式
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromROSMsg(cloud, *cloud_ptr);
+    
+    // 移除NaN点
+    std::vector<int> indices;
+    pcl::removeNaNFromPointCloud(*cloud_ptr, *cloud_ptr, indices);
+    
+    // 发布原始点云（可选）
+    // pc_pub_.publish(cloud);
+    
+    // 进行欧式聚类分割
+    std::vector<pcl::PointIndices> cluster_indices = euclideanCluster(cloud_ptr);
+    
+    // 找到最大的聚类
+    pcl::PointCloud<pcl::PointXYZ>::Ptr largest_cluster = findLargestCluster(cloud_ptr, cluster_indices);
+    
+    // 发布最大的聚类
+    if (largest_cluster->points.size() > 0) {
+        sensor_msgs::PointCloud2 output;
+        pcl::toROSMsg(*largest_cluster, output);
+
+        // 找到首尾两端点
+        pcl::PointXYZ start_point, end_point;
+        double min_angle = M_PI; // 初始化为最大值
+        double max_angle = -M_PI; // 初始化为最小值
+
+        for (const auto& point : largest_cluster->points)
+        {
+            double angle = calculateAngle(point);
+            if (angle < min_angle)
+            {
+                min_angle = angle;
+                start_point = point;
+            }
+            if (angle > max_angle)
+            {
+                max_angle = angle;
+                end_point = point;
+            }
+        }
+        std_msgs::Float32MultiArray array_msg;
+        // 计算并输出平均距离
+        double avg_distance_now = calculateAverageDistance(largest_cluster);
+        // 计算并输出最大物体的长度
+        double length_now = calculateCloudLength(largest_cluster);
+        // 发布激光雷达扫描数据信息
+        publish_lidarinfo(start_point,end_point,avg_distance_now,length_now);
+        // 发布激光雷达扫描的点云
+        output.header.frame_id = scan->header.frame_id;
+        output.header.stamp = scan->header.stamp;
+        largest_obj_pub_.publish(output);
+    }
+}
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "laser_clustering");
+    ros::NodeHandle nh;
+    ros::NodeHandle nh_private("~");
+    // 订阅Lasercan话题
+    std::string lidar_base;
+    nh_private.param<std::string>("lidar_base",lidar_base,"left");
+    ROS_INFO("lidar_base: %s",lidar_base.c_str());
+    if(lidar_base=="left"){
+        ros::Subscriber scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/LeftLidar/scan", 1, scanCallback);
+        lidar_info_pub = nh.advertise<std_msgs::Float32MultiArray>("/lidar_info_left", 10);
+    }
+
+    else{
+        ros::Subscriber scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/RightLidar/scan", 1, scanCallback);
+        lidar_info_pub = nh.advertise<std_msgs::Float32MultiArray>("/lidar_info_right", 10);
+    }
+    // 发布原始点云和最大聚类
+    // pc_pub_ = nh.advertise<sensor_msgs::PointCloud2>("point_cloud", 1); //原始点云
+    // largest_obj_pub_ = nh.advertise<sensor_msgs::PointCloud2>("largest_cluster", 1);//最大物体的点云
+    
+    ros::spin();
+    return 0;
+}
 
 //111111111111111111111111111111111111
 // typedef pcl::PointXYZ PointT;
@@ -170,201 +427,6 @@
 //     return 0;
 // }
 
-
-//222222222222222222222222222222222
-
-laser_geometry::LaserProjection projector_;
-ros::Publisher pc_pub_;
-ros::Publisher largest_obj_pub_;
-ros::Publisher lidar_info_pub;
-// 计算点云的平均距离
-double calculateAverageDistance(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
-    if (cloud->points.empty()) return 0.0;
-    
-    double total_distance = 0.0;
-    const pcl::PointXYZ origin(0, 0, 0);  // 传感器原点
-    
-    for (const auto& point : cloud->points) {
-        total_distance += pcl::euclideanDistance(point, origin);
-    }
-    
-    return total_distance / cloud->points.size();
-}
-
-// 计算点的角度（相对于x轴）
-double calculateAngle(const pcl::PointXYZ& point)
-{
-    return std::atan2(point.y, point.x);
-}
-double calculateCloudLength(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
-    if (cloud->points.empty()) return 0.0;
-    
-    // 方法1：简单计算边界框尺寸
-    pcl::PointXYZ min_pt, max_pt;
-    pcl::getMinMax3D(*cloud, min_pt, max_pt);
-    
-    // 计算三个维度的长度
-    double x_len = max_pt.x - min_pt.x;
-    // double y_len = max_pt.y - min_pt.y;
-    // double z_len = max_pt.z - min_pt.z;
-    
-    // 返回最大的长度（如果是2D激光数据，z_len可能很小）
-    // return std::max({x_len, y_len, z_len});
-    return x_len;
-    
-    /*
-    // 方法2：使用PCA计算主成分长度（更精确但计算量更大）
-    pcl::PCA<pcl::PointXYZ> pca;
-    pca.setInputCloud(cloud);
-    Eigen::Vector3f eigenvalues = pca.getEigenValues();
-    return sqrt(eigenvalues[0]); // 返回最大特征值的平方根
-    */
-}
-
-std::vector<pcl::PointIndices> euclideanCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
-    // 创建KD树对象用于搜索
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-    tree->setInputCloud(cloud);
-    
-    std::vector<pcl::PointIndices> cluster_indices;
-    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-    
-    // 设置聚类参数
-    ec.setClusterTolerance(0.1);  // 1m
-    ec.setMinClusterSize(10);     // 最小点数
-    ec.setMaxClusterSize(25000);  // 最大点数
-    ec.setSearchMethod(tree);
-    ec.setInputCloud(cloud);
-    ec.extract(cluster_indices);
-    
-    return cluster_indices;
-}
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr findLargestCluster(
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, 
-    std::vector<pcl::PointIndices> cluster_indices) {
-    
-    pcl::PointCloud<pcl::PointXYZ>::Ptr largest_cluster(new pcl::PointCloud<pcl::PointXYZ>);
-    size_t max_size = 0;
-    int max_index = -1;
-    
-    // 找到点数最多的聚类
-    for (size_t i = 0; i < cluster_indices.size(); ++i) {
-        if (cluster_indices[i].indices.size() > max_size) {
-            max_size = cluster_indices[i].indices.size();
-            max_index = i;
-        }
-    }
-    
-    // 提取最大聚类
-    if (max_index >= 0) {
-        pcl::ExtractIndices<pcl::PointXYZ> extract;
-        pcl::PointIndices::Ptr indices_ptr(new pcl::PointIndices(cluster_indices[max_index]));
-        extract.setInputCloud(cloud);
-        extract.setIndices(indices_ptr);
-        extract.setNegative(false);
-        extract.filter(*largest_cluster);
-    }
-    
-    return largest_cluster;
-}
-
-void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
-    // 将LaserScan转换为PointCloud2
-    sensor_msgs::PointCloud2 cloud;
-    projector_.projectLaser(*scan, cloud);
-    
-    // 转换为PCL点云格式
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::fromROSMsg(cloud, *cloud_ptr);
-    
-    // 移除NaN点
-    std::vector<int> indices;
-    pcl::removeNaNFromPointCloud(*cloud_ptr, *cloud_ptr, indices);
-    
-    // 发布原始点云（可选）
-    // pc_pub_.publish(cloud);
-    
-    // 进行欧式聚类分割
-    std::vector<pcl::PointIndices> cluster_indices = euclideanCluster(cloud_ptr);
-    
-    // 找到最大的聚类
-    pcl::PointCloud<pcl::PointXYZ>::Ptr largest_cluster = findLargestCluster(cloud_ptr, cluster_indices);
-    
-    // 发布最大的聚类
-    if (largest_cluster->points.size() > 0) {
-        sensor_msgs::PointCloud2 output;
-        pcl::toROSMsg(*largest_cluster, output);
-
-        // 找到首尾两端点
-        pcl::PointXYZ start_point, end_point;
-        double min_angle = M_PI; // 初始化为最大值
-        double max_angle = -M_PI; // 初始化为最小值
-
-        for (const auto& point : largest_cluster->points)
-        {
-            double angle = calculateAngle(point);
-            if (angle < min_angle)
-            {
-                min_angle = angle;
-                start_point = point;
-            }
-            if (angle > max_angle)
-            {
-                max_angle = angle;
-                end_point = point;
-            }
-        }
-        std_msgs::Float32MultiArray array_msg;
-
-        // 计算并输出最大物体的长度
-        double length = calculateCloudLength(largest_cluster);
-        ROS_INFO("Largest object length: %.2f meters", length);
-        // 计算并输出平均距离
-        double avg_distance = calculateAverageDistance(largest_cluster);
-        // 输出首尾两端点坐标
-        // std::cout << "Start point (x, y): (" << start_point.x << ", " << start_point.y << ")" << std::endl;
-        // std::cout << "End point (x, y): (" << end_point.x << ", " << end_point.y << ")" << std::endl;
-        array_msg.data.clear();
-        array_msg.data.push_back(start_point.x);//x1
-        array_msg.data.push_back(start_point.y);//y1
-        array_msg.data.push_back(end_point.x);//x2
-        array_msg.data.push_back(end_point.y);//y2
-        array_msg.data.push_back(avg_distance);//nowBdis 保存着最大物体扫描出的每个点的距离数据
-        array_msg.data.push_back(length);//当前扫描出的最大物体的曲线长度
-        array_msg.data.push_back(abs(start_point.x-end_point.x));//当前扫描出的最大物体的直线长度
-        lidar_info_pub.publish(array_msg);
-
-        output.header.frame_id = scan->header.frame_id;
-        output.header.stamp = scan->header.stamp;
-        largest_obj_pub_.publish(output);
-    }
-}
-
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "laser_clustering");
-    ros::NodeHandle nh;
-    ros::NodeHandle nh_private("~");
-    // 订阅Lasercan话题
-    std::string lidar_base;
-    nh_private.param<std::string>("lidar_base",lidar_base,"left");
-    ROS_INFO("lidar_base: %s",lidar_base.c_str());
-    if(lidar_base=="left"){
-        ros::Subscriber scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/LeftLidar/scan", 1, scanCallback);
-        lidar_info_pub = nh.advertise<std_msgs::Float32MultiArray>("/lidar_info_left", 10);
-    }
-
-    else{
-        ros::Subscriber scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/RightLidar/scan", 1, scanCallback);
-        lidar_info_pub = nh.advertise<std_msgs::Float32MultiArray>("/lidar_info_right", 10);
-    }
-    // 发布原始点云和最大聚类
-    // pc_pub_ = nh.advertise<sensor_msgs::PointCloud2>("point_cloud", 1); //原始点云
-    // largest_obj_pub_ = nh.advertise<sensor_msgs::PointCloud2>("largest_cluster", 1);//最大物体的点云
-    
-    ros::spin();
-    return 0;
-}
 
 
 //33333333333333333333333333333333333333
