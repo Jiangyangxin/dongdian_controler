@@ -31,6 +31,7 @@ ros::Publisher largest_obj_pub_;
 ros::Publisher lidar_info_pub;
 double length_send=0;//记录叶片的发送长度
 bool init=false;//是否初始化完成
+ros::Subscriber scan_sub;
 // 计算点云的平均距离
 double calculateAverageDistance(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
     if (cloud->points.empty()) return 0.0;
@@ -180,13 +181,13 @@ void publish_lidarinfo(pcl::PointXYZ &start_point,pcl::PointXYZ &end_point,doubl
 
     // ROS_INFO("Largest object length: %.2f meters", length_now);
     array_msg.data.clear();
-    array_msg.data.push_back(start_point_pub.x);//x1
-    array_msg.data.push_back(start_point_pub.y);//y1
-    array_msg.data.push_back(end_point_pub.x);//x2
-    array_msg.data.push_back(end_point_pub.y);//y2
+    array_msg.data.push_back(-end_point_pub.x);//x1
+    array_msg.data.push_back(-end_point_pub.y);//y1
+    array_msg.data.push_back(-start_point_pub.x);//x2
+    array_msg.data.push_back(-start_point_pub.y);//y2
     array_msg.data.push_back(avg_distance_now);//nowBdis 保存着最大物体扫描出的每个点的距离数据
     array_msg.data.push_back(length_send);//当前扫描出的最大物体的曲线长度
-    array_msg.data.push_back(abs(start_point.x-end_point.x));//当前扫描出的最大物体的直线长度
+    array_msg.data.push_back(abs(start_point.y-end_point.y));//当前扫描出的最大物体的直线长度
     lidar_info_pub.publish(array_msg);
     // 输出首尾两端点坐标
     // std::cout << "Start point (x, y): (" << start_point.x << ", " << start_point.y << ")" << std::endl;
@@ -263,17 +264,20 @@ int main(int argc, char** argv) {
     nh_private.param<std::string>("lidar_base",lidar_base,"left");
     ROS_INFO("lidar_base: %s",lidar_base.c_str());
     if(lidar_base=="left"){
-        ros::Subscriber scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/LeftLidar/scan", 1, scanCallback);
+        scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/LeftLidar/scan", 10, scanCallback);
         lidar_info_pub = nh.advertise<std_msgs::Float32MultiArray>("/lidar_info_left", 10);
+        // 发布原始点云和最大聚类
+        pc_pub_ = nh.advertise<sensor_msgs::PointCloud2>("/LeftLidar/point_cloud", 1); //原始点云
+        largest_obj_pub_ = nh.advertise<sensor_msgs::PointCloud2>("/LeftLidar/largest_cluster", 1);//最大物体的点云
     }
 
     else{
-        ros::Subscriber scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/RightLidar/scan", 1, scanCallback);
+        scan_sub = nh.subscribe<sensor_msgs::LaserScan>("/RightLidar/scan", 10, scanCallback);
         lidar_info_pub = nh.advertise<std_msgs::Float32MultiArray>("/lidar_info_right", 10);
+        pc_pub_ = nh.advertise<sensor_msgs::PointCloud2>("/RightLidar/point_cloud", 1); //原始点云
+        largest_obj_pub_ = nh.advertise<sensor_msgs::PointCloud2>("/RightLidar/largest_cluster", 1);//最大物体的点
     }
-    // 发布原始点云和最大聚类
-    // pc_pub_ = nh.advertise<sensor_msgs::PointCloud2>("point_cloud", 1); //原始点云
-    // largest_obj_pub_ = nh.advertise<sensor_msgs::PointCloud2>("largest_cluster", 1);//最大物体的点云
+
     
     ros::spin();
     return 0;

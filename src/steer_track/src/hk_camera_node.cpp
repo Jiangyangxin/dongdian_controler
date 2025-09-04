@@ -150,7 +150,7 @@ int main(int argc, char **argv)
         T_C1_C3.transform.rotation.y = q2.y();   
         T_C1_C3.transform.rotation.z = q2.z();  
 
-        // long target_ip2=3232235587; //表示IP地址为 192.168.0.67
+        // long target_ip2=3232235587; //表示IP地址为 192.168.0.67 
         long target_ip2=3232235843; //表示IP地址为 192.168.1.67
         camera::Camera MVS_cap2(hikrobot_camera,target_ip2,1);//相机2 //具体看Camera类的构造函数 0为RGB8Packed，1为Mono8，2为BayerRG8
         image_transport::ImageTransport main_cam_image2(hikrobot_camera);
